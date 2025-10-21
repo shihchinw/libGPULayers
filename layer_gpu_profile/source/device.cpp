@@ -175,13 +175,29 @@ Device::Device(Instance* _instance,
     addCounter(config, MaliExtBusRdBy, "External read bytes");
     addCounter(config, MaliExtBusWrBy, "External write bytes");
 
+    // External read bandwidth
+    addCounter(config, MaliSCBusFFEExtRdBy, "External front-end read bytes");
+    addCounter(config, MaliSCBusLSExtRdBy, "External L/S read bytes");
+    addCounter(config, MaliSCBusTexExtRdBy, "External texture read bytes");
+    addCounter(config, MaliSCBusRTUExtRdBy, "External RTU read bytes");
+
+    // L2 write bandwidth
+    addCounter(config, MaliSCBusLSWrBy, "L2 L/S write bytes");
+    addCounter(config, MaliSCBusTileWrBy, "L2 tile unit write bytes");
+    addCounter(config, MaliSCBusOtherWrBy, "L2 misc. write bytes");
+
     // Primitive counts
     addCounter(config, MaliGeomTotalPrim, "Input primitives");
     addCounter(config, MaliGeomVisiblePrim, "Visible primitives");
 
+    // Pixel counts
+    addCounter(config, MaliGPUPix, "Pixels");
+    addCounter(config, MaliFragOverdraw, "Fragments per pixel");
+
     // Thread counts
     addCounter(config, MaliNonFragThread, "Non-fragment threads");
     addCounter(config, MaliFragThread, "Fragment threads");
+    addCounter(config, MaliGeomPosShadThreadPerPrim, "Position threads per input primitive");
 
     // Functional unit counters
     // TODO HIVE-1307: Currently libGPUCounters doesn't expose a MaliALUIssueCy
@@ -195,6 +211,18 @@ Device::Device(Instance* _instance,
     addCounter(config, MaliVarIssueCy, "Varying unit cycles");
     addCounter(config, MaliTexIssueCy, "Texture unit cycles");
     addCounter(config, MaliLSIssueCy, "Load/store unit cycles");
+    addCounter(config, MaliRTUActiveCy, "Ray tracing unit cycles");
+
+    // Ray tracing unit counters
+    addCounter(config, MaliRTURay, "Started rays");
+    addCounter(config, MaliRTUResumeTraceRays, "Resumed rays");
+    addCounter(config, MaliRTUOpaqueHit, "Opaque triangle hits");
+    addCounter(config, MaliRTUNonOpaqueHit, "Non-opaque triangle hits");
+    addCounter(config, MaliRTUMiss, "Missed rays");
+    addCounter(config, MaliRTUFirstHitTerm, "First hit terminated rays");
+
+    addCounter(config, MaliRTUCacheHit, "RTU cache hit");
+    addCounter(config, MaliRTUCacheMiss, "RTU cache miss");
 
     // Create the counter sampler and set it running
     lgcSampler = std::make_unique<hwcpipe::sampler<>>(config);
