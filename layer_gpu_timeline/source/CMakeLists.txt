@@ -47,12 +47,14 @@ add_library(
         layer_device_functions_command_buffer.cpp
         layer_device_functions_command_pool.cpp
         layer_device_functions_debug.cpp
+        layer_device_functions_dispatch_data_graph.cpp
         layer_device_functions_dispatch.cpp
         layer_device_functions_draw_call.cpp
         layer_device_functions_queue.cpp
         layer_device_functions_render_pass.cpp
         layer_device_functions_trace_rays.cpp
         layer_device_functions_transfer.cpp
+        layer_instance_functions.cpp
         timeline_comms.cpp
         timeline_protobuf_encoder.cpp)
 

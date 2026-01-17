@@ -1,14 +1,14 @@
 # Layer: GPU Profile
 
-This layer is a frame profiler that can capture per workload performance
-counters for selected frames running on an Arm GPU.
+This layer is a frame profiler that captures per workload performance counters
+for selected frames running on an Arm GPU.
 
 ## What devices are supported?
 
 This layer requires Vulkan 1.0 and an Arm GPU because it uses an Arm-specific
 performance counter sampling library.
 
-## What data can be collected?
+## What data is collected?
 
 The layer serializes workloads for instrumented frames and injects counter
 samples between them, allowing the layer to measure the hardware metrics for
@@ -36,7 +36,7 @@ unaffected by the addition of serialization.
 
 Arm GPUs provide a wide range of performance counters covering many different
 aspects of hardware performance. The layer will collect a standard set of
-counters by default but, with source modification, can collect any of the
+counters by default but, with source modification, might collect any of the
 hardware counters and derived expressions supported by the
 [libGPUCounters][LGC] library that Arm provides on GitHub.
 
@@ -44,15 +44,15 @@ hardware counters and derived expressions supported by the
 
 ### GPU clock frequency impact
 
-The GPU idle time waiting for the CPU to take a counter sample can cause the
+The GPU idle time waiting for the CPU to take a counter sample might cause the
 system DVFS power governor to decide that the GPU is not busy. In production
 devices we commonly see that the GPU will be down-clocked during the
-instrumented frame, which may have an impact on a some of the available
-performance counters. For example, GPU memory latency may appear lower than
+instrumented frame, which might have an impact on some of the available
+performance counters. For example, GPU memory latency might appear lower than
 normal if the reduction in GPU clock makes the memory system look faster in
 comparison.
 
-When running on a pre-production device you can minimize the impacts of these
+When running on a pre-production device you minimize the impacts of these
 effects by pinning CPU, GPU, and bus clock frequencies. This is not usually
 possible on a production device.
 
@@ -72,7 +72,7 @@ Application setup steps:
 * Build a debuggable build of your application and install it on the Android
   device.
 
-Tooling setup steps
+Tooling setup steps:
 
 * Install the Android platform tools and ensure `adb` is on your `PATH`
   environment variable.
@@ -88,7 +88,7 @@ sections in the [Build documentation](../docs/building.md).
 
 ### Running using the layer
 
-You can configure a device to run a profile by using the Android helper utility
+You configure a device to run a profile by using the Android helper utility
 found in the root directory to configure the layer and manage the application.
 You must enable the profile layer, and provide a configuration file to
 parameterize it.
@@ -98,8 +98,9 @@ python3 lgl_android_install.py --layer layer_gpu_profile --config <your.json>  -
 ```
 
 The [`layer_config.json`](layer_config.json) file in this directory is a
-template configuration file you can start from. It defaults to periodic
-sampling every 600 frames, but you can modify this to suit your needs.
+template configuration file you can use as a starting point. It defaults to
+periodic sampling every 600 frames, but you should modify this to suit your
+needs.
 
 The `--profile` option specifies an output directory on the host to contain
 the CSV files written by the tool. One CSV is written for each frame, each CSV
@@ -112,19 +113,40 @@ application under test and the capture process. For full instructions see the
 
 ## Layer configuration
 
-The current layer supports two `sampling_mode` values:
+### Setting frame selection mode
 
-* `periodic_frame`: Sample every N frames.
-* `frame_list`: Sample specific frames.
+The current layer supports the following ways to select frames to profile using
+the `frame_mode` config option:
 
-When `mode` is `periodic_frame` the integer value of the `periodic_frame` key
-defines the frame sampling period. The integer value of the
-`periodic_min_frame` key defines the first possible frame that could be
-profiled, allowing profiles to skip over any loading frames. By default frame 0
-is ignored.
+* `disabled`: Sampling is disabled.
+* `periodic`: Sample every N frames.
+* `list`: Sample specific frames.
 
-When `mode` is `frame_list` the value of the `frame_list` key defines a list
-of integers giving the specific frames to capture.
+When frame selection mode is `periodic` the integer value of the
+`periodic_frame` key defines the frame sampling period. The integer value of
+the `periodic_min_frame` key defines the first possible frame that could be
+profiled, allowing profiles to skip over any loading frames. By default frame
+0 is ignored.
+
+When frame selection mode is `list` the value of the `frame_list` key defines
+a list of integers giving the specific frames to capture.
+
+### Setting counter sampling mode
+
+The current layer supports the following ways to select how to sample counters
+to profile using the `sample_mode` config option:
+
+* `disabled`: Sampling is disabled.
+* `workload`: Sample every workload in each frame of interest.
+* `frame`: Sample at the end of each frame of interest.
+
+By default per-frame samples are isolated from other frames by inserting a
+`vkDeviceWaitIdle()` before and after the frame to ensure that workload
+in the sampled region does not overlap neighboring frames. Setting the
+`frame_serialization` config option to `false` will allow frames to overlap
+without serialization, but can add noise to the returned counter values. This
+option has no effect for per-workload sampling, which must always use
+serialization.
 
 ## Layer counters
 

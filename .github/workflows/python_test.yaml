@@ -8,9 +8,15 @@ on:
       - main
     tags:
       - '*'
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.json'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.json'
 
 jobs:
   python-test:
