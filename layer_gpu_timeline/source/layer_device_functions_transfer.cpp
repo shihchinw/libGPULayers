@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  * ----------------------------------------------------------------------------
- * Copyright (c) 2024 Arm Limited
+ * Copyright (c) 2024-2026 Arm Limited
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -583,6 +583,50 @@ VKAPI_ATTR void VKAPI_CALL
 }
 
 /* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryIndirectKHR<user_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyMemoryIndirectInfoKHR* pCopyMemoryIndirectInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // TODO: Indirect so unknown size = report as generic memory transfer.
+    uint64_t tagID = registerBufferTransfer(layer, commandBuffer, Tracker::LCSBufferTransfer::Type::copy_memory, -1);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    emitStartTag(layer, commandBuffer, tagID);
+    layer->driver.vkCmdCopyMemoryIndirectKHR(commandBuffer, pCopyMemoryIndirectInfo);
+    emitEndTag(layer, commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryToImageIndirectKHR<user_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyMemoryToImageIndirectInfoKHR* pCopyMemoryToImageIndirectInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // TODO: Indirect so unknown size = report as generic memory transfer.
+    uint64_t tagID = registerImageTransfer(layer, commandBuffer, Tracker::LCSImageTransfer::Type::copy_memory_to_image, -1);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    emitStartTag(layer, commandBuffer, tagID);
+    layer->driver.vkCmdCopyMemoryToImageIndirectKHR(commandBuffer, pCopyMemoryToImageIndirectInfo);
+    emitEndTag(layer, commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
 template<>
 VKAPI_ATTR void VKAPI_CALL
     layer_vkCmdCopyAccelerationStructureKHR<user_tag>(VkCommandBuffer commandBuffer,
@@ -672,5 +716,103 @@ VKAPI_ATTR void VKAPI_CALL
     lock.unlock();
     emitStartTag(layer, commandBuffer, tagID);
     layer->driver.vkCmdCopyMemoryToAccelerationStructureKHR(commandBuffer, pInfo);
+    emitEndTag(layer, commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryToMicromapEXT<user_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyMemoryToMicromapInfoEXT* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    uint64_t tagID =
+        registerAccelerationStructureTransfer(layer,
+                                              commandBuffer,
+                                              Tracker::LCSAccelerationStructureTransfer::Type::mem_to_micromap,
+                                              -1);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    emitStartTag(layer, commandBuffer, tagID);
+    layer->driver.vkCmdCopyMemoryToMicromapEXT(commandBuffer, pInfo);
+    emitEndTag(layer, commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMicromapEXT<user_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyMicromapInfoEXT* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    uint64_t tagID =
+        registerAccelerationStructureTransfer(layer,
+                                              commandBuffer,
+                                              Tracker::LCSAccelerationStructureTransfer::Type::micromap_to_micromap,
+                                              -1);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    emitStartTag(layer, commandBuffer, tagID);
+    layer->driver.vkCmdCopyMicromapEXT(commandBuffer, pInfo);
+    emitEndTag(layer, commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMicromapToMemoryEXT<user_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyMicromapToMemoryInfoEXT* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    uint64_t tagID =
+        registerAccelerationStructureTransfer(layer,
+                                              commandBuffer,
+                                              Tracker::LCSAccelerationStructureTransfer::Type::micromap_to_mem,
+                                              -1);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    emitStartTag(layer, commandBuffer, tagID);
+    layer->driver.vkCmdCopyMicromapToMemoryEXT(commandBuffer, pInfo);
+    emitEndTag(layer, commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyTensorARM<user_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyTensorInfoARM* pCopyTensorInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // TODO: Parameters define size in elements, rather than bytes, and we
+    // currently don't track tensor data type to convert to bytes
+    uint64_t tagID = registerBufferTransfer(layer, commandBuffer, Tracker::LCSBufferTransfer::Type::copy_tensor, -1);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    emitStartTag(layer, commandBuffer, tagID);
+    layer->driver.vkCmdCopyTensorARM(commandBuffer, pCopyTensorInfo);
     emitEndTag(layer, commandBuffer);
 }

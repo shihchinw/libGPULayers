@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  * ----------------------------------------------------------------------------
- * Copyright (c) 2024-2025 Arm Limited
+ * Copyright (c) 2024-2026 Arm Limited
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -407,6 +407,50 @@ constexpr PFN_vkBuildMicromapsEXT getLayerPtr_vkBuildMicromapsEXT()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkClearShaderInstrumentationMetricsARM = requires(
+    VkDevice device, VkShaderInstrumentationARM instrumentation
+) {
+    layer_vkClearShaderInstrumentationMetricsARM<T>(device, instrumentation);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkClearShaderInstrumentationMetricsARM getLayerPtr_vkClearShaderInstrumentationMetricsARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkClearShaderInstrumentationMetricsARM<T>)
+        {
+            return layer_vkClearShaderInstrumentationMetricsARM<T>;
+        }
+
+        return layer_vkClearShaderInstrumentationMetricsARM<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBeginConditionalRendering2EXT = requires(
+    VkCommandBuffer commandBuffer, const VkConditionalRenderingBeginInfo2EXT* pConditionalRenderingBegin
+) {
+    layer_vkCmdBeginConditionalRendering2EXT<T>(commandBuffer, pConditionalRenderingBegin);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBeginConditionalRendering2EXT getLayerPtr_vkCmdBeginConditionalRendering2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBeginConditionalRendering2EXT<T>)
+        {
+            return layer_vkCmdBeginConditionalRendering2EXT<T>;
+        }
+
+        return layer_vkCmdBeginConditionalRendering2EXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdBeginConditionalRenderingEXT = requires(
     VkCommandBuffer commandBuffer, const VkConditionalRenderingBeginInfoEXT* pConditionalRenderingBegin
 ) {
@@ -424,6 +468,28 @@ constexpr PFN_vkCmdBeginConditionalRenderingEXT getLayerPtr_vkCmdBeginConditiona
         }
 
         return layer_vkCmdBeginConditionalRenderingEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBeginCustomResolveEXT = requires(
+    VkCommandBuffer commandBuffer, const VkBeginCustomResolveInfoEXT* pBeginCustomResolveInfo
+) {
+    layer_vkCmdBeginCustomResolveEXT<T>(commandBuffer, pBeginCustomResolveInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBeginCustomResolveEXT getLayerPtr_vkCmdBeginCustomResolveEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBeginCustomResolveEXT<T>)
+        {
+            return layer_vkCmdBeginCustomResolveEXT<T>;
+        }
+
+        return layer_vkCmdBeginCustomResolveEXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -600,6 +666,50 @@ constexpr PFN_vkCmdBeginRenderingKHR getLayerPtr_vkCmdBeginRenderingKHR()
         }
 
         return layer_vkCmdBeginRenderingKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBeginShaderInstrumentationARM = requires(
+    VkCommandBuffer commandBuffer, VkShaderInstrumentationARM instrumentation
+) {
+    layer_vkCmdBeginShaderInstrumentationARM<T>(commandBuffer, instrumentation);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBeginShaderInstrumentationARM getLayerPtr_vkCmdBeginShaderInstrumentationARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBeginShaderInstrumentationARM<T>)
+        {
+            return layer_vkCmdBeginShaderInstrumentationARM<T>;
+        }
+
+        return layer_vkCmdBeginShaderInstrumentationARM<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBeginTransformFeedback2EXT = requires(
+    VkCommandBuffer commandBuffer, uint32_t firstCounterRange, uint32_t counterRangeCount, const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfos
+) {
+    layer_vkCmdBeginTransformFeedback2EXT<T>(commandBuffer, firstCounterRange, counterRangeCount, pCounterInfos);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBeginTransformFeedback2EXT getLayerPtr_vkCmdBeginTransformFeedback2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBeginTransformFeedback2EXT<T>)
+        {
+            return layer_vkCmdBeginTransformFeedback2EXT<T>;
+        }
+
+        return layer_vkCmdBeginTransformFeedback2EXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -825,6 +935,28 @@ constexpr PFN_vkCmdBindIndexBuffer2KHR getLayerPtr_vkCmdBindIndexBuffer2KHR()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdBindIndexBuffer3KHR = requires(
+    VkCommandBuffer commandBuffer, const VkBindIndexBuffer3InfoKHR* pInfo
+) {
+    layer_vkCmdBindIndexBuffer3KHR<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBindIndexBuffer3KHR getLayerPtr_vkCmdBindIndexBuffer3KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBindIndexBuffer3KHR<T>)
+        {
+            return layer_vkCmdBindIndexBuffer3KHR<T>;
+        }
+
+        return layer_vkCmdBindIndexBuffer3KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdBindPipeline = requires(
     VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline
 ) {
@@ -847,6 +979,50 @@ constexpr PFN_vkCmdBindPipeline getLayerPtr_vkCmdBindPipeline()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdBindResourceHeapEXT = requires(
+    VkCommandBuffer commandBuffer, const VkBindHeapInfoEXT* pBindInfo
+) {
+    layer_vkCmdBindResourceHeapEXT<T>(commandBuffer, pBindInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBindResourceHeapEXT getLayerPtr_vkCmdBindResourceHeapEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBindResourceHeapEXT<T>)
+        {
+            return layer_vkCmdBindResourceHeapEXT<T>;
+        }
+
+        return layer_vkCmdBindResourceHeapEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBindSamplerHeapEXT = requires(
+    VkCommandBuffer commandBuffer, const VkBindHeapInfoEXT* pBindInfo
+) {
+    layer_vkCmdBindSamplerHeapEXT<T>(commandBuffer, pBindInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBindSamplerHeapEXT getLayerPtr_vkCmdBindSamplerHeapEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBindSamplerHeapEXT<T>)
+        {
+            return layer_vkCmdBindSamplerHeapEXT<T>;
+        }
+
+        return layer_vkCmdBindSamplerHeapEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdBindShadersEXT = requires(
     VkCommandBuffer commandBuffer, uint32_t stageCount, const VkShaderStageFlagBits* pStages, const VkShaderEXT* pShaders
 ) {
@@ -864,6 +1040,28 @@ constexpr PFN_vkCmdBindShadersEXT getLayerPtr_vkCmdBindShadersEXT()
         }
 
         return layer_vkCmdBindShadersEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBindTransformFeedbackBuffers2EXT = requires(
+    VkCommandBuffer commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const VkBindTransformFeedbackBuffer2InfoEXT* pBindingInfos
+) {
+    layer_vkCmdBindTransformFeedbackBuffers2EXT<T>(commandBuffer, firstBinding, bindingCount, pBindingInfos);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBindTransformFeedbackBuffers2EXT getLayerPtr_vkCmdBindTransformFeedbackBuffers2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBindTransformFeedbackBuffers2EXT<T>)
+        {
+            return layer_vkCmdBindTransformFeedbackBuffers2EXT<T>;
+        }
+
+        return layer_vkCmdBindTransformFeedbackBuffers2EXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -952,6 +1150,28 @@ constexpr PFN_vkCmdBindVertexBuffers2EXT getLayerPtr_vkCmdBindVertexBuffers2EXT(
         }
 
         return layer_vkCmdBindVertexBuffers2EXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdBindVertexBuffers3KHR = requires(
+    VkCommandBuffer commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const VkBindVertexBuffer3InfoKHR* pBindingInfos
+) {
+    layer_vkCmdBindVertexBuffers3KHR<T>(commandBuffer, firstBinding, bindingCount, pBindingInfos);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdBindVertexBuffers3KHR getLayerPtr_vkCmdBindVertexBuffers3KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdBindVertexBuffers3KHR<T>)
+        {
+            return layer_vkCmdBindVertexBuffers3KHR<T>;
+        }
+
+        return layer_vkCmdBindVertexBuffers3KHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -1463,6 +1683,28 @@ constexpr PFN_vkCmdCopyImageToBuffer2KHR getLayerPtr_vkCmdCopyImageToBuffer2KHR(
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdCopyImageToMemoryKHR = requires(
+    VkCommandBuffer commandBuffer, const VkCopyDeviceMemoryImageInfoKHR* pCopyMemoryInfo
+) {
+    layer_vkCmdCopyImageToMemoryKHR<T>(commandBuffer, pCopyMemoryInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdCopyImageToMemoryKHR getLayerPtr_vkCmdCopyImageToMemoryKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdCopyImageToMemoryKHR<T>)
+        {
+            return layer_vkCmdCopyImageToMemoryKHR<T>;
+        }
+
+        return layer_vkCmdCopyImageToMemoryKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdCopyMemoryIndirectKHR = requires(
     VkCommandBuffer commandBuffer, const VkCopyMemoryIndirectInfoKHR* pCopyMemoryIndirectInfo
 ) {
@@ -1480,6 +1722,28 @@ constexpr PFN_vkCmdCopyMemoryIndirectKHR getLayerPtr_vkCmdCopyMemoryIndirectKHR(
         }
 
         return layer_vkCmdCopyMemoryIndirectKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdCopyMemoryKHR = requires(
+    VkCommandBuffer commandBuffer, const VkCopyDeviceMemoryInfoKHR* pCopyMemoryInfo
+) {
+    layer_vkCmdCopyMemoryKHR<T>(commandBuffer, pCopyMemoryInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdCopyMemoryKHR getLayerPtr_vkCmdCopyMemoryKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdCopyMemoryKHR<T>)
+        {
+            return layer_vkCmdCopyMemoryKHR<T>;
+        }
+
+        return layer_vkCmdCopyMemoryKHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -1524,6 +1788,28 @@ constexpr PFN_vkCmdCopyMemoryToImageIndirectKHR getLayerPtr_vkCmdCopyMemoryToIma
         }
 
         return layer_vkCmdCopyMemoryToImageIndirectKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdCopyMemoryToImageKHR = requires(
+    VkCommandBuffer commandBuffer, const VkCopyDeviceMemoryImageInfoKHR* pCopyMemoryInfo
+) {
+    layer_vkCmdCopyMemoryToImageKHR<T>(commandBuffer, pCopyMemoryInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdCopyMemoryToImageKHR getLayerPtr_vkCmdCopyMemoryToImageKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdCopyMemoryToImageKHR<T>)
+        {
+            return layer_vkCmdCopyMemoryToImageKHR<T>;
+        }
+
+        return layer_vkCmdCopyMemoryToImageKHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -1617,6 +1903,28 @@ constexpr PFN_vkCmdCopyQueryPoolResults getLayerPtr_vkCmdCopyQueryPoolResults()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdCopyQueryPoolResultsToMemoryKHR = requires(
+    VkCommandBuffer commandBuffer, VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount, const VkStridedDeviceAddressRangeKHR* pDstRange, VkAddressCommandFlagsKHR dstFlags, VkQueryResultFlags queryResultFlags
+) {
+    layer_vkCmdCopyQueryPoolResultsToMemoryKHR<T>(commandBuffer, queryPool, firstQuery, queryCount, pDstRange, dstFlags, queryResultFlags);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdCopyQueryPoolResultsToMemoryKHR getLayerPtr_vkCmdCopyQueryPoolResultsToMemoryKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdCopyQueryPoolResultsToMemoryKHR<T>)
+        {
+            return layer_vkCmdCopyQueryPoolResultsToMemoryKHR<T>;
+        }
+
+        return layer_vkCmdCopyQueryPoolResultsToMemoryKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdCopyTensorARM = requires(
     VkCommandBuffer commandBuffer, const VkCopyTensorInfoARM* pCopyTensorInfo
 ) {
@@ -1700,6 +2008,50 @@ constexpr PFN_vkCmdDebugMarkerInsertEXT getLayerPtr_vkCmdDebugMarkerInsertEXT()
         }
 
         return layer_vkCmdDebugMarkerInsertEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdDecompressMemoryEXT = requires(
+    VkCommandBuffer commandBuffer, const VkDecompressMemoryInfoEXT* pDecompressMemoryInfoEXT
+) {
+    layer_vkCmdDecompressMemoryEXT<T>(commandBuffer, pDecompressMemoryInfoEXT);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDecompressMemoryEXT getLayerPtr_vkCmdDecompressMemoryEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDecompressMemoryEXT<T>)
+        {
+            return layer_vkCmdDecompressMemoryEXT<T>;
+        }
+
+        return layer_vkCmdDecompressMemoryEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdDecompressMemoryIndirectCountEXT = requires(
+    VkCommandBuffer commandBuffer, VkMemoryDecompressionMethodFlagsEXT decompressionMethod, VkDeviceAddress indirectCommandsAddress, VkDeviceAddress indirectCommandsCountAddress, uint32_t maxDecompressionCount, uint32_t stride
+) {
+    layer_vkCmdDecompressMemoryIndirectCountEXT<T>(commandBuffer, decompressionMethod, indirectCommandsAddress, indirectCommandsCountAddress, maxDecompressionCount, stride);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDecompressMemoryIndirectCountEXT getLayerPtr_vkCmdDecompressMemoryIndirectCountEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDecompressMemoryIndirectCountEXT<T>)
+        {
+            return layer_vkCmdDecompressMemoryIndirectCountEXT<T>;
+        }
+
+        return layer_vkCmdDecompressMemoryIndirectCountEXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -1815,6 +2167,28 @@ constexpr PFN_vkCmdDispatchIndirect getLayerPtr_vkCmdDispatchIndirect()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdDispatchIndirect2KHR = requires(
+    VkCommandBuffer commandBuffer, const VkDispatchIndirect2InfoKHR* pInfo
+) {
+    layer_vkCmdDispatchIndirect2KHR<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDispatchIndirect2KHR getLayerPtr_vkCmdDispatchIndirect2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDispatchIndirect2KHR<T>)
+        {
+            return layer_vkCmdDispatchIndirect2KHR<T>;
+        }
+
+        return layer_vkCmdDispatchIndirect2KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdDraw = requires(
     VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance
 ) {
@@ -1881,6 +2255,28 @@ constexpr PFN_vkCmdDrawIndexedIndirect getLayerPtr_vkCmdDrawIndexedIndirect()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdDrawIndexedIndirect2KHR = requires(
+    VkCommandBuffer commandBuffer, const VkDrawIndirect2InfoKHR* pInfo
+) {
+    layer_vkCmdDrawIndexedIndirect2KHR<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawIndexedIndirect2KHR getLayerPtr_vkCmdDrawIndexedIndirect2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawIndexedIndirect2KHR<T>)
+        {
+            return layer_vkCmdDrawIndexedIndirect2KHR<T>;
+        }
+
+        return layer_vkCmdDrawIndexedIndirect2KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdDrawIndexedIndirectCount = requires(
     VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride
 ) {
@@ -1898,6 +2294,28 @@ constexpr PFN_vkCmdDrawIndexedIndirectCount getLayerPtr_vkCmdDrawIndexedIndirect
         }
 
         return layer_vkCmdDrawIndexedIndirectCount<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdDrawIndexedIndirectCount2KHR = requires(
+    VkCommandBuffer commandBuffer, const VkDrawIndirectCount2InfoKHR* pInfo
+) {
+    layer_vkCmdDrawIndexedIndirectCount2KHR<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawIndexedIndirectCount2KHR getLayerPtr_vkCmdDrawIndexedIndirectCount2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawIndexedIndirectCount2KHR<T>)
+        {
+            return layer_vkCmdDrawIndexedIndirectCount2KHR<T>;
+        }
+
+        return layer_vkCmdDrawIndexedIndirectCount2KHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -1947,6 +2365,50 @@ constexpr PFN_vkCmdDrawIndirect getLayerPtr_vkCmdDrawIndirect()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdDrawIndirect2KHR = requires(
+    VkCommandBuffer commandBuffer, const VkDrawIndirect2InfoKHR* pInfo
+) {
+    layer_vkCmdDrawIndirect2KHR<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawIndirect2KHR getLayerPtr_vkCmdDrawIndirect2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawIndirect2KHR<T>)
+        {
+            return layer_vkCmdDrawIndirect2KHR<T>;
+        }
+
+        return layer_vkCmdDrawIndirect2KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdDrawIndirectByteCount2EXT = requires(
+    VkCommandBuffer commandBuffer, uint32_t instanceCount, uint32_t firstInstance, const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfo, uint32_t counterOffset, uint32_t vertexStride
+) {
+    layer_vkCmdDrawIndirectByteCount2EXT<T>(commandBuffer, instanceCount, firstInstance, pCounterInfo, counterOffset, vertexStride);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawIndirectByteCount2EXT getLayerPtr_vkCmdDrawIndirectByteCount2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawIndirectByteCount2EXT<T>)
+        {
+            return layer_vkCmdDrawIndirectByteCount2EXT<T>;
+        }
+
+        return layer_vkCmdDrawIndirectByteCount2EXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdDrawIndirectByteCountEXT = requires(
     VkCommandBuffer commandBuffer, uint32_t instanceCount, uint32_t firstInstance, VkBuffer counterBuffer, VkDeviceSize counterBufferOffset, uint32_t counterOffset, uint32_t vertexStride
 ) {
@@ -1991,6 +2453,28 @@ constexpr PFN_vkCmdDrawIndirectCount getLayerPtr_vkCmdDrawIndirectCount()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdDrawIndirectCount2KHR = requires(
+    VkCommandBuffer commandBuffer, const VkDrawIndirectCount2InfoKHR* pInfo
+) {
+    layer_vkCmdDrawIndirectCount2KHR<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawIndirectCount2KHR getLayerPtr_vkCmdDrawIndirectCount2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawIndirectCount2KHR<T>)
+        {
+            return layer_vkCmdDrawIndirectCount2KHR<T>;
+        }
+
+        return layer_vkCmdDrawIndirectCount2KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdDrawIndirectCountKHR = requires(
     VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride
 ) {
@@ -2030,6 +2514,50 @@ constexpr PFN_vkCmdDrawMeshTasksEXT getLayerPtr_vkCmdDrawMeshTasksEXT()
         }
 
         return layer_vkCmdDrawMeshTasksEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdDrawMeshTasksIndirect2EXT = requires(
+    VkCommandBuffer commandBuffer, const VkDrawIndirect2InfoKHR* pInfo
+) {
+    layer_vkCmdDrawMeshTasksIndirect2EXT<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawMeshTasksIndirect2EXT getLayerPtr_vkCmdDrawMeshTasksIndirect2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawMeshTasksIndirect2EXT<T>)
+        {
+            return layer_vkCmdDrawMeshTasksIndirect2EXT<T>;
+        }
+
+        return layer_vkCmdDrawMeshTasksIndirect2EXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdDrawMeshTasksIndirectCount2EXT = requires(
+    VkCommandBuffer commandBuffer, const VkDrawIndirectCount2InfoKHR* pInfo
+) {
+    layer_vkCmdDrawMeshTasksIndirectCount2EXT<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdDrawMeshTasksIndirectCount2EXT getLayerPtr_vkCmdDrawMeshTasksIndirectCount2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdDrawMeshTasksIndirectCount2EXT<T>)
+        {
+            return layer_vkCmdDrawMeshTasksIndirectCount2EXT<T>;
+        }
+
+        return layer_vkCmdDrawMeshTasksIndirectCount2EXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -2300,7 +2828,7 @@ constexpr PFN_vkCmdEndRendering getLayerPtr_vkCmdEndRendering()
 /* Test for user_tag availability. */
 template <typename T>
 concept hasLayerPtr_vkCmdEndRendering2EXT = requires(
-    VkCommandBuffer commandBuffer, const VkRenderingEndInfoEXT* pRenderingEndInfo
+    VkCommandBuffer commandBuffer, const VkRenderingEndInfoKHR* pRenderingEndInfo
 ) {
     layer_vkCmdEndRendering2EXT<T>(commandBuffer, pRenderingEndInfo);
 };
@@ -2316,6 +2844,28 @@ constexpr PFN_vkCmdEndRendering2EXT getLayerPtr_vkCmdEndRendering2EXT()
         }
 
         return layer_vkCmdEndRendering2EXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdEndRendering2KHR = requires(
+    VkCommandBuffer commandBuffer, const VkRenderingEndInfoKHR* pRenderingEndInfo
+) {
+    layer_vkCmdEndRendering2KHR<T>(commandBuffer, pRenderingEndInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdEndRendering2KHR getLayerPtr_vkCmdEndRendering2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdEndRendering2KHR<T>)
+        {
+            return layer_vkCmdEndRendering2KHR<T>;
+        }
+
+        return layer_vkCmdEndRendering2KHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -2338,6 +2888,50 @@ constexpr PFN_vkCmdEndRenderingKHR getLayerPtr_vkCmdEndRenderingKHR()
         }
 
         return layer_vkCmdEndRenderingKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdEndShaderInstrumentationARM = requires(
+    VkCommandBuffer commandBuffer
+) {
+    layer_vkCmdEndShaderInstrumentationARM<T>(commandBuffer);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdEndShaderInstrumentationARM getLayerPtr_vkCmdEndShaderInstrumentationARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdEndShaderInstrumentationARM<T>)
+        {
+            return layer_vkCmdEndShaderInstrumentationARM<T>;
+        }
+
+        return layer_vkCmdEndShaderInstrumentationARM<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdEndTransformFeedback2EXT = requires(
+    VkCommandBuffer commandBuffer, uint32_t firstCounterRange, uint32_t counterRangeCount, const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfos
+) {
+    layer_vkCmdEndTransformFeedback2EXT<T>(commandBuffer, firstCounterRange, counterRangeCount, pCounterInfos);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdEndTransformFeedback2EXT getLayerPtr_vkCmdEndTransformFeedback2EXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdEndTransformFeedback2EXT<T>)
+        {
+            return layer_vkCmdEndTransformFeedback2EXT<T>;
+        }
+
+        return layer_vkCmdEndTransformFeedback2EXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -2426,6 +3020,28 @@ constexpr PFN_vkCmdFillBuffer getLayerPtr_vkCmdFillBuffer()
         }
 
         return layer_vkCmdFillBuffer<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdFillMemoryKHR = requires(
+    VkCommandBuffer commandBuffer, const VkDeviceAddressRangeKHR* pDstRange, VkAddressCommandFlagsKHR dstFlags, uint32_t data
+) {
+    layer_vkCmdFillMemoryKHR<T>(commandBuffer, pDstRange, dstFlags, data);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdFillMemoryKHR getLayerPtr_vkCmdFillMemoryKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdFillMemoryKHR<T>)
+        {
+            return layer_vkCmdFillMemoryKHR<T>;
+        }
+
+        return layer_vkCmdFillMemoryKHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -2668,6 +3284,28 @@ constexpr PFN_vkCmdPushConstants2KHR getLayerPtr_vkCmdPushConstants2KHR()
         }
 
         return layer_vkCmdPushConstants2KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdPushDataEXT = requires(
+    VkCommandBuffer commandBuffer, const VkPushDataInfoEXT* pPushDataInfo
+) {
+    layer_vkCmdPushDataEXT<T>(commandBuffer, pPushDataInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdPushDataEXT getLayerPtr_vkCmdPushDataEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdPushDataEXT<T>)
+        {
+            return layer_vkCmdPushDataEXT<T>;
+        }
+
+        return layer_vkCmdPushDataEXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -5181,6 +5819,28 @@ constexpr PFN_vkCmdUpdateBuffer getLayerPtr_vkCmdUpdateBuffer()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkCmdUpdateMemoryKHR = requires(
+    VkCommandBuffer commandBuffer, const VkDeviceAddressRangeKHR* pDstRange, VkAddressCommandFlagsKHR dstFlags, VkDeviceSize dataSize, const void* pData
+) {
+    layer_vkCmdUpdateMemoryKHR<T>(commandBuffer, pDstRange, dstFlags, dataSize, pData);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdUpdateMemoryKHR getLayerPtr_vkCmdUpdateMemoryKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdUpdateMemoryKHR<T>)
+        {
+            return layer_vkCmdUpdateMemoryKHR<T>;
+        }
+
+        return layer_vkCmdUpdateMemoryKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkCmdWaitEvents = requires(
     VkCommandBuffer commandBuffer, uint32_t eventCount, const VkEvent* pEvents, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers
 ) {
@@ -5264,6 +5924,50 @@ constexpr PFN_vkCmdWriteAccelerationStructuresPropertiesKHR getLayerPtr_vkCmdWri
         }
 
         return layer_vkCmdWriteAccelerationStructuresPropertiesKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdWriteBufferMarker2AMD = requires(
+    VkCommandBuffer commandBuffer, VkPipelineStageFlags2 stage, VkBuffer dstBuffer, VkDeviceSize dstOffset, uint32_t marker
+) {
+    layer_vkCmdWriteBufferMarker2AMD<T>(commandBuffer, stage, dstBuffer, dstOffset, marker);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdWriteBufferMarker2AMD getLayerPtr_vkCmdWriteBufferMarker2AMD()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdWriteBufferMarker2AMD<T>)
+        {
+            return layer_vkCmdWriteBufferMarker2AMD<T>;
+        }
+
+        return layer_vkCmdWriteBufferMarker2AMD<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCmdWriteMarkerToMemoryAMD = requires(
+    VkCommandBuffer commandBuffer, const VkMemoryMarkerInfoAMD* pInfo
+) {
+    layer_vkCmdWriteMarkerToMemoryAMD<T>(commandBuffer, pInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCmdWriteMarkerToMemoryAMD getLayerPtr_vkCmdWriteMarkerToMemoryAMD()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCmdWriteMarkerToMemoryAMD<T>)
+        {
+            return layer_vkCmdWriteMarkerToMemoryAMD<T>;
+        }
+
+        return layer_vkCmdWriteMarkerToMemoryAMD<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -5616,6 +6320,28 @@ constexpr PFN_vkCopyMicromapToMemoryEXT getLayerPtr_vkCopyMicromapToMemoryEXT()
         }
 
         return layer_vkCopyMicromapToMemoryEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCreateAccelerationStructure2KHR = requires(
+    VkDevice device, const VkAccelerationStructureCreateInfo2KHR* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkAccelerationStructureKHR* pAccelerationStructure
+) {
+    layer_vkCreateAccelerationStructure2KHR<T>(device, pCreateInfo, pAllocator, pAccelerationStructure);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCreateAccelerationStructure2KHR getLayerPtr_vkCreateAccelerationStructure2KHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCreateAccelerationStructure2KHR<T>)
+        {
+            return layer_vkCreateAccelerationStructure2KHR<T>;
+        }
+
+        return layer_vkCreateAccelerationStructure2KHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -6386,6 +7112,28 @@ constexpr PFN_vkCreateSemaphore getLayerPtr_vkCreateSemaphore()
         }
 
         return layer_vkCreateSemaphore<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkCreateShaderInstrumentationARM = requires(
+    VkDevice device, const VkShaderInstrumentationCreateInfoARM* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkShaderInstrumentationARM* pInstrumentation
+) {
+    layer_vkCreateShaderInstrumentationARM<T>(device, pCreateInfo, pAllocator, pInstrumentation);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkCreateShaderInstrumentationARM getLayerPtr_vkCreateShaderInstrumentationARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkCreateShaderInstrumentationARM<T>)
+        {
+            return layer_vkCreateShaderInstrumentationARM<T>;
+        }
+
+        return layer_vkCreateShaderInstrumentationARM<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -7315,6 +8063,28 @@ constexpr PFN_vkDestroyShaderEXT getLayerPtr_vkDestroyShaderEXT()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkDestroyShaderInstrumentationARM = requires(
+    VkDevice device, VkShaderInstrumentationARM instrumentation, const VkAllocationCallbacks* pAllocator
+) {
+    layer_vkDestroyShaderInstrumentationARM<T>(device, instrumentation, pAllocator);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkDestroyShaderInstrumentationARM getLayerPtr_vkDestroyShaderInstrumentationARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkDestroyShaderInstrumentationARM<T>)
+        {
+            return layer_vkDestroyShaderInstrumentationARM<T>;
+        }
+
+        return layer_vkDestroyShaderInstrumentationARM<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkDestroyShaderModule = requires(
     VkDevice device, VkShaderModule shaderModule, const VkAllocationCallbacks* pAllocator
 ) {
@@ -8195,6 +8965,28 @@ constexpr PFN_vkGetDeviceBufferMemoryRequirementsKHR getLayerPtr_vkGetDeviceBuff
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkGetDeviceFaultDebugInfoKHR = requires(
+    VkDevice device, VkDeviceFaultDebugInfoKHR* pDebugInfo
+) {
+    layer_vkGetDeviceFaultDebugInfoKHR<T>(device, pDebugInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetDeviceFaultDebugInfoKHR getLayerPtr_vkGetDeviceFaultDebugInfoKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetDeviceFaultDebugInfoKHR<T>)
+        {
+            return layer_vkGetDeviceFaultDebugInfoKHR<T>;
+        }
+
+        return layer_vkGetDeviceFaultDebugInfoKHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkGetDeviceFaultInfoEXT = requires(
     VkDevice device, VkDeviceFaultCountsEXT* pFaultCounts, VkDeviceFaultInfoEXT* pFaultInfo
 ) {
@@ -8212,6 +9004,28 @@ constexpr PFN_vkGetDeviceFaultInfoEXT getLayerPtr_vkGetDeviceFaultInfoEXT()
         }
 
         return layer_vkGetDeviceFaultInfoEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkGetDeviceFaultReportsKHR = requires(
+    VkDevice device, uint64_t timeout, uint32_t* pFaultCounts, VkDeviceFaultInfoKHR* pFaultInfo
+) {
+    layer_vkGetDeviceFaultReportsKHR<T>(device, timeout, pFaultCounts, pFaultInfo);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetDeviceFaultReportsKHR getLayerPtr_vkGetDeviceFaultReportsKHR()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetDeviceFaultReportsKHR<T>)
+        {
+            return layer_vkGetDeviceFaultReportsKHR<T>;
+        }
+
+        return layer_vkGetDeviceFaultReportsKHR<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -8789,6 +9603,28 @@ constexpr PFN_vkGetImageMemoryRequirements2KHR getLayerPtr_vkGetImageMemoryRequi
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkGetImageOpaqueCaptureDataEXT = requires(
+    VkDevice device, uint32_t imageCount, const VkImage* pImages, VkHostAddressRangeEXT* pDatas
+) {
+    layer_vkGetImageOpaqueCaptureDataEXT<T>(device, imageCount, pImages, pDatas);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetImageOpaqueCaptureDataEXT getLayerPtr_vkGetImageOpaqueCaptureDataEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetImageOpaqueCaptureDataEXT<T>)
+        {
+            return layer_vkGetImageOpaqueCaptureDataEXT<T>;
+        }
+
+        return layer_vkGetImageOpaqueCaptureDataEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkGetImageOpaqueCaptureDescriptorDataEXT = requires(
     VkDevice device, const VkImageCaptureDescriptorDataInfoEXT* pInfo, void* pData
 ) {
@@ -9070,6 +9906,28 @@ constexpr PFN_vkGetMicromapBuildSizesEXT getLayerPtr_vkGetMicromapBuildSizesEXT(
         }
 
         return layer_vkGetMicromapBuildSizesEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkGetPastPresentationTimingEXT = requires(
+    VkDevice device, const VkPastPresentationTimingInfoEXT* pPastPresentationTimingInfo, VkPastPresentationTimingPropertiesEXT* pPastPresentationTimingProperties
+) {
+    layer_vkGetPastPresentationTimingEXT<T>(device, pPastPresentationTimingInfo, pPastPresentationTimingProperties);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetPastPresentationTimingEXT getLayerPtr_vkGetPastPresentationTimingEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetPastPresentationTimingEXT<T>)
+        {
+            return layer_vkGetPastPresentationTimingEXT<T>;
+        }
+
+        return layer_vkGetPastPresentationTimingEXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -9537,6 +10395,28 @@ constexpr PFN_vkGetShaderBinaryDataEXT getLayerPtr_vkGetShaderBinaryDataEXT()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkGetShaderInstrumentationValuesARM = requires(
+    VkDevice device, VkShaderInstrumentationARM instrumentation, uint32_t* pMetricBlockCount, void* pMetricValues, VkShaderInstrumentationValuesFlagsARM flags
+) {
+    layer_vkGetShaderInstrumentationValuesARM<T>(device, instrumentation, pMetricBlockCount, pMetricValues, flags);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetShaderInstrumentationValuesARM getLayerPtr_vkGetShaderInstrumentationValuesARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetShaderInstrumentationValuesARM<T>)
+        {
+            return layer_vkGetShaderInstrumentationValuesARM<T>;
+        }
+
+        return layer_vkGetShaderInstrumentationValuesARM<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkGetShaderModuleCreateInfoIdentifierEXT = requires(
     VkDevice device, const VkShaderModuleCreateInfo* pCreateInfo, VkShaderModuleIdentifierEXT* pIdentifier
 ) {
@@ -9647,6 +10527,50 @@ constexpr PFN_vkGetSwapchainStatusKHR getLayerPtr_vkGetSwapchainStatusKHR()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkGetSwapchainTimeDomainPropertiesEXT = requires(
+    VkDevice device, VkSwapchainKHR swapchain, VkSwapchainTimeDomainPropertiesEXT* pSwapchainTimeDomainProperties, uint64_t* pTimeDomainsCounter
+) {
+    layer_vkGetSwapchainTimeDomainPropertiesEXT<T>(device, swapchain, pSwapchainTimeDomainProperties, pTimeDomainsCounter);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetSwapchainTimeDomainPropertiesEXT getLayerPtr_vkGetSwapchainTimeDomainPropertiesEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetSwapchainTimeDomainPropertiesEXT<T>)
+        {
+            return layer_vkGetSwapchainTimeDomainPropertiesEXT<T>;
+        }
+
+        return layer_vkGetSwapchainTimeDomainPropertiesEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkGetSwapchainTimingPropertiesEXT = requires(
+    VkDevice device, VkSwapchainKHR swapchain, VkSwapchainTimingPropertiesEXT* pSwapchainTimingProperties, uint64_t* pSwapchainTimingPropertiesCounter
+) {
+    layer_vkGetSwapchainTimingPropertiesEXT<T>(device, swapchain, pSwapchainTimingProperties, pSwapchainTimingPropertiesCounter);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetSwapchainTimingPropertiesEXT getLayerPtr_vkGetSwapchainTimingPropertiesEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetSwapchainTimingPropertiesEXT<T>)
+        {
+            return layer_vkGetSwapchainTimingPropertiesEXT<T>;
+        }
+
+        return layer_vkGetSwapchainTimingPropertiesEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkGetTensorMemoryRequirementsARM = requires(
     VkDevice device, const VkTensorMemoryRequirementsInfoARM* pInfo, VkMemoryRequirements2* pMemoryRequirements
 ) {
@@ -9664,6 +10588,28 @@ constexpr PFN_vkGetTensorMemoryRequirementsARM getLayerPtr_vkGetTensorMemoryRequ
         }
 
         return layer_vkGetTensorMemoryRequirementsARM<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkGetTensorOpaqueCaptureDataARM = requires(
+    VkDevice device, uint32_t tensorCount, const VkTensorARM* pTensors, VkHostAddressRangeEXT* pDatas
+) {
+    layer_vkGetTensorOpaqueCaptureDataARM<T>(device, tensorCount, pTensors, pDatas);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkGetTensorOpaqueCaptureDataARM getLayerPtr_vkGetTensorOpaqueCaptureDataARM()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkGetTensorOpaqueCaptureDataARM<T>)
+        {
+            return layer_vkGetTensorOpaqueCaptureDataARM<T>;
+        }
+
+        return layer_vkGetTensorOpaqueCaptureDataARM<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -10109,6 +11055,28 @@ constexpr PFN_vkQueueWaitIdle getLayerPtr_vkQueueWaitIdle()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkRegisterCustomBorderColorEXT = requires(
+    VkDevice device, const VkSamplerCustomBorderColorCreateInfoEXT* pBorderColor, VkBool32 requestIndex, uint32_t* pIndex
+) {
+    layer_vkRegisterCustomBorderColorEXT<T>(device, pBorderColor, requestIndex, pIndex);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkRegisterCustomBorderColorEXT getLayerPtr_vkRegisterCustomBorderColorEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkRegisterCustomBorderColorEXT<T>)
+        {
+            return layer_vkRegisterCustomBorderColorEXT<T>;
+        }
+
+        return layer_vkRegisterCustomBorderColorEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkRegisterDeviceEventEXT = requires(
     VkDevice device, const VkDeviceEventInfoEXT* pDeviceEventInfo, const VkAllocationCallbacks* pAllocator, VkFence* pFence
 ) {
@@ -10549,6 +11517,28 @@ constexpr PFN_vkSetPrivateDataEXT getLayerPtr_vkSetPrivateDataEXT()
 
 /* Test for user_tag availability. */
 template <typename T>
+concept hasLayerPtr_vkSetSwapchainPresentTimingQueueSizeEXT = requires(
+    VkDevice device, VkSwapchainKHR swapchain, uint32_t size
+) {
+    layer_vkSetSwapchainPresentTimingQueueSizeEXT<T>(device, swapchain, size);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkSetSwapchainPresentTimingQueueSizeEXT getLayerPtr_vkSetSwapchainPresentTimingQueueSizeEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkSetSwapchainPresentTimingQueueSizeEXT<T>)
+        {
+            return layer_vkSetSwapchainPresentTimingQueueSizeEXT<T>;
+        }
+
+        return layer_vkSetSwapchainPresentTimingQueueSizeEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
 concept hasLayerPtr_vkSignalSemaphore = requires(
     VkDevice device, const VkSemaphoreSignalInfo* pSignalInfo
 ) {
@@ -10742,6 +11732,28 @@ constexpr PFN_vkUnmapMemory2KHR getLayerPtr_vkUnmapMemory2KHR()
         }
 
         return layer_vkUnmapMemory2KHR<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkUnregisterCustomBorderColorEXT = requires(
+    VkDevice device, uint32_t index
+) {
+    layer_vkUnregisterCustomBorderColorEXT<T>(device, index);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkUnregisterCustomBorderColorEXT getLayerPtr_vkUnregisterCustomBorderColorEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkUnregisterCustomBorderColorEXT<T>)
+        {
+            return layer_vkUnregisterCustomBorderColorEXT<T>;
+        }
+
+        return layer_vkUnregisterCustomBorderColorEXT<default_tag>;
     }.operator()<user_tag>();
 }
 
@@ -11006,6 +12018,50 @@ constexpr PFN_vkWriteMicromapsPropertiesEXT getLayerPtr_vkWriteMicromapsProperti
         }
 
         return layer_vkWriteMicromapsPropertiesEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkWriteResourceDescriptorsEXT = requires(
+    VkDevice device, uint32_t resourceCount, const VkResourceDescriptorInfoEXT* pResources, const VkHostAddressRangeEXT* pDescriptors
+) {
+    layer_vkWriteResourceDescriptorsEXT<T>(device, resourceCount, pResources, pDescriptors);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkWriteResourceDescriptorsEXT getLayerPtr_vkWriteResourceDescriptorsEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkWriteResourceDescriptorsEXT<T>)
+        {
+            return layer_vkWriteResourceDescriptorsEXT<T>;
+        }
+
+        return layer_vkWriteResourceDescriptorsEXT<default_tag>;
+    }.operator()<user_tag>();
+}
+
+/* Test for user_tag availability. */
+template <typename T>
+concept hasLayerPtr_vkWriteSamplerDescriptorsEXT = requires(
+    VkDevice device, uint32_t samplerCount, const VkSamplerCreateInfo* pSamplers, const VkHostAddressRangeEXT* pDescriptors
+) {
+    layer_vkWriteSamplerDescriptorsEXT<T>(device, samplerCount, pSamplers, pDescriptors);
+};
+
+/* Function pointer resolution. */
+constexpr PFN_vkWriteSamplerDescriptorsEXT getLayerPtr_vkWriteSamplerDescriptorsEXT()
+{
+    return [] <typename T>
+    {
+        if constexpr(hasLayerPtr_vkWriteSamplerDescriptorsEXT<T>)
+        {
+            return layer_vkWriteSamplerDescriptorsEXT<T>;
+        }
+
+        return layer_vkWriteSamplerDescriptorsEXT<default_tag>;
     }.operator()<user_tag>();
 }
 

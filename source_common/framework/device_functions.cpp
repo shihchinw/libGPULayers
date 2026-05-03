@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  * ----------------------------------------------------------------------------
- * Copyright (c) 2024-2025 Arm Limited
+ * Copyright (c) 2024-2026 Arm Limited
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -351,6 +351,40 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkBuildMicromapsEXT<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkClearShaderInstrumentationMetricsARM<default_tag>(
+    VkDevice device,
+    VkShaderInstrumentationARM instrumentation
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkClearShaderInstrumentationMetricsARM(device, instrumentation);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginConditionalRendering2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkConditionalRenderingBeginInfo2EXT* pConditionalRenderingBegin
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBeginConditionalRendering2EXT(commandBuffer, pConditionalRenderingBegin);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginConditionalRenderingEXT<default_tag>(
     VkCommandBuffer commandBuffer,
     const VkConditionalRenderingBeginInfoEXT* pConditionalRenderingBegin
@@ -364,6 +398,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginConditionalRenderingEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdBeginConditionalRenderingEXT(commandBuffer, pConditionalRenderingBegin);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginCustomResolveEXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkBeginCustomResolveInfoEXT* pBeginCustomResolveInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBeginCustomResolveEXT(commandBuffer, pBeginCustomResolveInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -508,6 +559,42 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginRenderingKHR<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdBeginRenderingKHR(commandBuffer, pRenderingInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginShaderInstrumentationARM<default_tag>(
+    VkCommandBuffer commandBuffer,
+    VkShaderInstrumentationARM instrumentation
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBeginShaderInstrumentationARM(commandBuffer, instrumentation);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginTransformFeedback2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    uint32_t firstCounterRange,
+    uint32_t counterRangeCount,
+    const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfos
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBeginTransformFeedback2EXT(commandBuffer, firstCounterRange, counterRangeCount, pCounterInfos);
 }
 
 /* See Vulkan API for documentation. */
@@ -702,6 +789,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindIndexBuffer2KHR<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindIndexBuffer3KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkBindIndexBuffer3InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBindIndexBuffer3KHR(commandBuffer, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindPipeline<default_tag>(
     VkCommandBuffer commandBuffer,
     VkPipelineBindPoint pipelineBindPoint,
@@ -716,6 +820,40 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindPipeline<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindResourceHeapEXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkBindHeapInfoEXT* pBindInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBindResourceHeapEXT(commandBuffer, pBindInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindSamplerHeapEXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkBindHeapInfoEXT* pBindInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBindSamplerHeapEXT(commandBuffer, pBindInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -735,6 +873,25 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindShadersEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdBindShadersEXT(commandBuffer, stageCount, pStages, pShaders);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindTransformFeedbackBuffers2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    uint32_t firstBinding,
+    uint32_t bindingCount,
+    const VkBindTransformFeedbackBuffer2InfoEXT* pBindingInfos
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBindTransformFeedbackBuffers2EXT(commandBuffer, firstBinding, bindingCount, pBindingInfos);
 }
 
 /* See Vulkan API for documentation. */
@@ -820,6 +977,25 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindVertexBuffers2EXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdBindVertexBuffers2EXT(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindVertexBuffers3KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    uint32_t firstBinding,
+    uint32_t bindingCount,
+    const VkBindVertexBuffer3InfoKHR* pBindingInfos
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdBindVertexBuffers3KHR(commandBuffer, firstBinding, bindingCount, pBindingInfos);
 }
 
 /* See Vulkan API for documentation. */
@@ -1255,6 +1431,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyImageToBuffer2KHR<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyImageToMemoryKHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyDeviceMemoryImageInfoKHR* pCopyMemoryInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdCopyImageToMemoryKHR(commandBuffer, pCopyMemoryInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryIndirectKHR<default_tag>(
     VkCommandBuffer commandBuffer,
     const VkCopyMemoryIndirectInfoKHR* pCopyMemoryIndirectInfo
@@ -1268,6 +1461,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryIndirectKHR<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdCopyMemoryIndirectKHR(commandBuffer, pCopyMemoryIndirectInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryKHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyDeviceMemoryInfoKHR* pCopyMemoryInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdCopyMemoryKHR(commandBuffer, pCopyMemoryInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -1302,6 +1512,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryToImageIndirectKHR<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdCopyMemoryToImageIndirectKHR(commandBuffer, pCopyMemoryToImageIndirectInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyMemoryToImageKHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkCopyDeviceMemoryImageInfoKHR* pCopyMemoryInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdCopyMemoryToImageKHR(commandBuffer, pCopyMemoryInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -1380,6 +1607,28 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyQueryPoolResults<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyQueryPoolResultsToMemoryKHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    VkQueryPool queryPool,
+    uint32_t firstQuery,
+    uint32_t queryCount,
+    const VkStridedDeviceAddressRangeKHR* pDstRange,
+    VkAddressCommandFlagsKHR dstFlags,
+    VkQueryResultFlags queryResultFlags
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdCopyQueryPoolResultsToMemoryKHR(commandBuffer, queryPool, firstQuery, queryCount, pDstRange, dstFlags, queryResultFlags);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdCopyTensorARM<default_tag>(
     VkCommandBuffer commandBuffer,
     const VkCopyTensorInfoARM* pCopyTensorInfo
@@ -1443,6 +1692,44 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDebugMarkerInsertEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdDebugMarkerInsertEXT(commandBuffer, pMarkerInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDecompressMemoryEXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDecompressMemoryInfoEXT* pDecompressMemoryInfoEXT
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDecompressMemoryEXT(commandBuffer, pDecompressMemoryInfoEXT);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDecompressMemoryIndirectCountEXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    VkMemoryDecompressionMethodFlagsEXT decompressionMethod,
+    VkDeviceAddress indirectCommandsAddress,
+    VkDeviceAddress indirectCommandsCountAddress,
+    uint32_t maxDecompressionCount,
+    uint32_t stride
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDecompressMemoryIndirectCountEXT(commandBuffer, decompressionMethod, indirectCommandsAddress, indirectCommandsCountAddress, maxDecompressionCount, stride);
 }
 
 /* See Vulkan API for documentation. */
@@ -1546,6 +1833,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDispatchIndirect<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDispatchIndirect2KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDispatchIndirect2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDispatchIndirect2KHR(commandBuffer, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdDraw<default_tag>(
     VkCommandBuffer commandBuffer,
     uint32_t vertexCount,
@@ -1607,6 +1911,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirect<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirect2KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDrawIndirect2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawIndexedIndirect2KHR(commandBuffer, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirectCount<default_tag>(
     VkCommandBuffer commandBuffer,
     VkBuffer buffer,
@@ -1625,6 +1946,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirectCount<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdDrawIndexedIndirectCount(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirectCount2KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDrawIndirectCount2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawIndexedIndirectCount2KHR(commandBuffer, pInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -1667,6 +2005,44 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirect<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirect2KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDrawIndirect2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawIndirect2KHR(commandBuffer, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectByteCount2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    uint32_t instanceCount,
+    uint32_t firstInstance,
+    const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfo,
+    uint32_t counterOffset,
+    uint32_t vertexStride
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawIndirectByteCount2EXT(commandBuffer, instanceCount, firstInstance, pCounterInfo, counterOffset, vertexStride);
 }
 
 /* See Vulkan API for documentation. */
@@ -1715,6 +2091,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectCount<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectCount2KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDrawIndirectCount2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawIndirectCount2KHR(commandBuffer, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectCountKHR<default_tag>(
     VkCommandBuffer commandBuffer,
     VkBuffer buffer,
@@ -1752,6 +2145,40 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdDrawMeshTasksEXT(commandBuffer, groupCountX, groupCountY, groupCountZ);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksIndirect2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDrawIndirect2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawMeshTasksIndirect2EXT(commandBuffer, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksIndirectCount2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDrawIndirectCount2InfoKHR* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdDrawMeshTasksIndirectCount2EXT(commandBuffer, pInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -1978,7 +2405,7 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndRendering<default_tag>(
 template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndRendering2EXT<default_tag>(
     VkCommandBuffer commandBuffer,
-    const VkRenderingEndInfoEXT* pRenderingEndInfo
+    const VkRenderingEndInfoKHR* pRenderingEndInfo
 ) {
     LAYER_TRACE(__func__);
 
@@ -1989,6 +2416,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndRendering2EXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdEndRendering2EXT(commandBuffer, pRenderingEndInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndRendering2KHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkRenderingEndInfoKHR* pRenderingEndInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdEndRendering2KHR(commandBuffer, pRenderingEndInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -2005,6 +2449,41 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndRenderingKHR<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdEndRenderingKHR(commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndShaderInstrumentationARM<default_tag>(
+    VkCommandBuffer commandBuffer
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdEndShaderInstrumentationARM(commandBuffer);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndTransformFeedback2EXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    uint32_t firstCounterRange,
+    uint32_t counterRangeCount,
+    const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfos
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdEndTransformFeedback2EXT(commandBuffer, firstCounterRange, counterRangeCount, pCounterInfos);
 }
 
 /* See Vulkan API for documentation. */
@@ -2081,6 +2560,25 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdFillBuffer<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdFillBuffer(commandBuffer, dstBuffer, dstOffset, size, data);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdFillMemoryKHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDeviceAddressRangeKHR* pDstRange,
+    VkAddressCommandFlagsKHR dstFlags,
+    uint32_t data
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdFillMemoryKHR(commandBuffer, pDstRange, dstFlags, data);
 }
 
 /* See Vulkan API for documentation. */
@@ -2283,6 +2781,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdPushConstants2KHR<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdPushConstants2KHR(commandBuffer, pPushConstantsInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdPushDataEXT<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkPushDataInfoEXT* pPushDataInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdPushDataEXT(commandBuffer, pPushDataInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -4315,6 +4830,26 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdUpdateBuffer<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdUpdateMemoryKHR<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkDeviceAddressRangeKHR* pDstRange,
+    VkAddressCommandFlagsKHR dstFlags,
+    VkDeviceSize dataSize,
+    const void* pData
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdUpdateMemoryKHR(commandBuffer, pDstRange, dstFlags, dataSize, pData);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkCmdWaitEvents<default_tag>(
     VkCommandBuffer commandBuffer,
     uint32_t eventCount,
@@ -4396,6 +4931,43 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdWriteAccelerationStructuresPropertiesKHR<d
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkCmdWriteAccelerationStructuresPropertiesKHR(commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdWriteBufferMarker2AMD<default_tag>(
+    VkCommandBuffer commandBuffer,
+    VkPipelineStageFlags2 stage,
+    VkBuffer dstBuffer,
+    VkDeviceSize dstOffset,
+    uint32_t marker
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdWriteBufferMarker2AMD(commandBuffer, stage, dstBuffer, dstOffset, marker);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdWriteMarkerToMemoryAMD<default_tag>(
+    VkCommandBuffer commandBuffer,
+    const VkMemoryMarkerInfoAMD* pInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(commandBuffer);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkCmdWriteMarkerToMemoryAMD(commandBuffer, pInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -4684,6 +5256,25 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCopyMicromapToMemoryEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     return layer->driver.vkCopyMicromapToMemoryEXT(device, deferredOperation, pInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateAccelerationStructure2KHR<default_tag>(
+    VkDevice device,
+    const VkAccelerationStructureCreateInfo2KHR* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkAccelerationStructureKHR* pAccelerationStructure
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkCreateAccelerationStructure2KHR(device, pCreateInfo, pAllocator, pAccelerationStructure);
 }
 
 /* See Vulkan API for documentation. */
@@ -5358,6 +5949,25 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateSemaphore<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     return layer->driver.vkCreateSemaphore(device, pCreateInfo, pAllocator, pSemaphore);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateShaderInstrumentationARM<default_tag>(
+    VkDevice device,
+    const VkShaderInstrumentationCreateInfoARM* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkShaderInstrumentationARM* pInstrumentation
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkCreateShaderInstrumentationARM(device, pCreateInfo, pAllocator, pInstrumentation);
 }
 
 /* See Vulkan API for documentation. */
@@ -6106,6 +6716,24 @@ VKAPI_ATTR void VKAPI_CALL layer_vkDestroyShaderEXT<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkDestroyShaderInstrumentationARM<default_tag>(
+    VkDevice device,
+    VkShaderInstrumentationARM instrumentation,
+    const VkAllocationCallbacks* pAllocator
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkDestroyShaderInstrumentationARM(device, instrumentation, pAllocator);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkDestroyShaderModule<default_tag>(
     VkDevice device,
     VkShaderModule shaderModule,
@@ -6827,6 +7455,23 @@ VKAPI_ATTR void VKAPI_CALL layer_vkGetDeviceBufferMemoryRequirementsKHR<default_
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetDeviceFaultDebugInfoKHR<default_tag>(
+    VkDevice device,
+    VkDeviceFaultDebugInfoKHR* pDebugInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetDeviceFaultDebugInfoKHR(device, pDebugInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetDeviceFaultInfoEXT<default_tag>(
     VkDevice device,
     VkDeviceFaultCountsEXT* pFaultCounts,
@@ -6841,6 +7486,25 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetDeviceFaultInfoEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     return layer->driver.vkGetDeviceFaultInfoEXT(device, pFaultCounts, pFaultInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetDeviceFaultReportsKHR<default_tag>(
+    VkDevice device,
+    uint64_t timeout,
+    uint32_t* pFaultCounts,
+    VkDeviceFaultInfoKHR* pFaultInfo
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetDeviceFaultReportsKHR(device, timeout, pFaultCounts, pFaultInfo);
 }
 
 /* See Vulkan API for documentation. */
@@ -7279,6 +7943,25 @@ VKAPI_ATTR void VKAPI_CALL layer_vkGetImageMemoryRequirements2KHR<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetImageOpaqueCaptureDataEXT<default_tag>(
+    VkDevice device,
+    uint32_t imageCount,
+    const VkImage* pImages,
+    VkHostAddressRangeEXT* pDatas
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetImageOpaqueCaptureDataEXT(device, imageCount, pImages, pDatas);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetImageOpaqueCaptureDescriptorDataEXT<default_tag>(
     VkDevice device,
     const VkImageCaptureDescriptorDataInfoEXT* pInfo,
@@ -7519,6 +8202,24 @@ VKAPI_ATTR void VKAPI_CALL layer_vkGetMicromapBuildSizesEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkGetMicromapBuildSizesEXT(device, buildType, pBuildInfo, pSizeInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetPastPresentationTimingEXT<default_tag>(
+    VkDevice device,
+    const VkPastPresentationTimingInfoEXT* pPastPresentationTimingInfo,
+    VkPastPresentationTimingPropertiesEXT* pPastPresentationTimingProperties
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetPastPresentationTimingEXT(device, pPastPresentationTimingInfo, pPastPresentationTimingProperties);
 }
 
 /* See Vulkan API for documentation. */
@@ -7924,6 +8625,26 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetShaderBinaryDataEXT<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetShaderInstrumentationValuesARM<default_tag>(
+    VkDevice device,
+    VkShaderInstrumentationARM instrumentation,
+    uint32_t* pMetricBlockCount,
+    void* pMetricValues,
+    VkShaderInstrumentationValuesFlagsARM flags
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetShaderInstrumentationValuesARM(device, instrumentation, pMetricBlockCount, pMetricValues, flags);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkGetShaderModuleCreateInfoIdentifierEXT<default_tag>(
     VkDevice device,
     const VkShaderModuleCreateInfo* pCreateInfo,
@@ -8015,6 +8736,44 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetSwapchainStatusKHR<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetSwapchainTimeDomainPropertiesEXT<default_tag>(
+    VkDevice device,
+    VkSwapchainKHR swapchain,
+    VkSwapchainTimeDomainPropertiesEXT* pSwapchainTimeDomainProperties,
+    uint64_t* pTimeDomainsCounter
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetSwapchainTimeDomainPropertiesEXT(device, swapchain, pSwapchainTimeDomainProperties, pTimeDomainsCounter);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetSwapchainTimingPropertiesEXT<default_tag>(
+    VkDevice device,
+    VkSwapchainKHR swapchain,
+    VkSwapchainTimingPropertiesEXT* pSwapchainTimingProperties,
+    uint64_t* pSwapchainTimingPropertiesCounter
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetSwapchainTimingPropertiesEXT(device, swapchain, pSwapchainTimingProperties, pSwapchainTimingPropertiesCounter);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR void VKAPI_CALL layer_vkGetTensorMemoryRequirementsARM<default_tag>(
     VkDevice device,
     const VkTensorMemoryRequirementsInfoARM* pInfo,
@@ -8029,6 +8788,25 @@ VKAPI_ATTR void VKAPI_CALL layer_vkGetTensorMemoryRequirementsARM<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     layer->driver.vkGetTensorMemoryRequirementsARM(device, pInfo, pMemoryRequirements);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetTensorOpaqueCaptureDataARM<default_tag>(
+    VkDevice device,
+    uint32_t tensorCount,
+    const VkTensorARM* pTensors,
+    VkHostAddressRangeEXT* pDatas
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkGetTensorOpaqueCaptureDataARM(device, tensorCount, pTensors, pDatas);
 }
 
 /* See Vulkan API for documentation. */
@@ -8394,6 +9172,25 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkQueueWaitIdle<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkRegisterCustomBorderColorEXT<default_tag>(
+    VkDevice device,
+    const VkSamplerCustomBorderColorCreateInfoEXT* pBorderColor,
+    VkBool32 requestIndex,
+    uint32_t* pIndex
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkRegisterCustomBorderColorEXT(device, pBorderColor, requestIndex, pIndex);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR VkResult VKAPI_CALL layer_vkRegisterDeviceEventEXT<default_tag>(
     VkDevice device,
     const VkDeviceEventInfoEXT* pDeviceEventInfo,
@@ -8755,6 +9552,24 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkSetPrivateDataEXT<default_tag>(
 
 /* See Vulkan API for documentation. */
 template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkSetSwapchainPresentTimingQueueSizeEXT<default_tag>(
+    VkDevice device,
+    VkSwapchainKHR swapchain,
+    uint32_t size
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkSetSwapchainPresentTimingQueueSizeEXT(device, swapchain, size);
+}
+
+/* See Vulkan API for documentation. */
+template <>
 VKAPI_ATTR VkResult VKAPI_CALL layer_vkSignalSemaphore<default_tag>(
     VkDevice device,
     const VkSemaphoreSignalInfo* pSignalInfo
@@ -8908,6 +9723,23 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkUnmapMemory2KHR<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     return layer->driver.vkUnmapMemory2KHR(device, pMemoryUnmapInfo);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR void VKAPI_CALL layer_vkUnregisterCustomBorderColorEXT<default_tag>(
+    VkDevice device,
+    uint32_t index
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    layer->driver.vkUnregisterCustomBorderColorEXT(device, index);
 }
 
 /* See Vulkan API for documentation. */
@@ -9141,6 +9973,44 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkWriteMicromapsPropertiesEXT<default_tag>(
     // Release the lock to call into the driver
     lock.unlock();
     return layer->driver.vkWriteMicromapsPropertiesEXT(device, micromapCount, pMicromaps, queryType, dataSize, pData, stride);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkWriteResourceDescriptorsEXT<default_tag>(
+    VkDevice device,
+    uint32_t resourceCount,
+    const VkResourceDescriptorInfoEXT* pResources,
+    const VkHostAddressRangeEXT* pDescriptors
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkWriteResourceDescriptorsEXT(device, resourceCount, pResources, pDescriptors);
+}
+
+/* See Vulkan API for documentation. */
+template <>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkWriteSamplerDescriptorsEXT<default_tag>(
+    VkDevice device,
+    uint32_t samplerCount,
+    const VkSamplerCreateInfo* pSamplers,
+    const VkHostAddressRangeEXT* pDescriptors
+) {
+    LAYER_TRACE(__func__);
+
+    // Hold the lock to access layer-wide global store
+    std::unique_lock<std::mutex> lock { g_vulkanLock };
+    auto* layer = Device::retrieve(device);
+
+    // Release the lock to call into the driver
+    lock.unlock();
+    return layer->driver.vkWriteSamplerDescriptorsEXT(device, samplerCount, pSamplers, pDescriptors);
 }
 
 // clang-format on

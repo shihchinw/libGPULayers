@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  * ----------------------------------------------------------------------------
- * Copyright (c) 2024-2025 Arm Limited
+ * Copyright (c) 2024-2026 Arm Limited
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -109,6 +109,8 @@ std::string LCSImageTransfer::getTransferTypeStr() const
         return "Copy buffer to image";
     case Type::copy_image_to_buffer:
         return "Copy image to buffer";
+    case Type::copy_memory_to_image:
+        return "Copy memory to image";
     default:
         assert(false && "Unexpected LCSImageTransfer::Type");
         return "<invalid>";
@@ -134,6 +136,10 @@ std::string LCSBufferTransfer::getTransferTypeStr() const
         return "Fill buffer";
     case Type::copy_buffer:
         return "Copy buffer";
+    case Type::copy_memory:
+        return "Copy memory";
+    case Type::copy_tensor:
+        return "Copy tensor";
     default:
         assert(false && "Unexpected LCSBufferTransfer::Type");
         return "<invalid>";
@@ -188,6 +194,12 @@ std::string LCSAccelerationStructureTransfer::getTransferTypeStr() const
         return "Copy acceleration structure to memory";
     case Type::mem_to_struct:
         return "Copy memory to acceleration structure";
+    case Type::micromap_to_micromap:
+        return "Copy micromap";
+    case Type::micromap_to_mem:
+        return "Copy micromap to memory";
+    case Type::mem_to_micromap:
+        return "Copy memory to micromap";
     default:
         assert(false && "Unexpected LCSAccelerationStructureTransfer::Type");
         return "<invalid>";
