@@ -1,0 +1,11 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+      "name": "VK_LAYER_LGL_gpu_time",
+      "type": "INSTANCE",
+      "library_path": "libVkLayerGPUTime.so",
+      "api_version": "1.0.0",
+      "implementation_version": "1",
+      "description": "Layer for GPU time profiling"
+  }
+}

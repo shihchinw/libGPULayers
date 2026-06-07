@@ -1,9 +1,9 @@
 {
     "layer": "VK_LAYER_LGL_gpu_profile",
     "frame_mode": "periodic",
-    "sample_mode": "frame",
+    "sample_mode": "workload",
     "periodic_min_frame": 1,
-    "periodic_frame": 600,
+    "periodic_frame": 60,
     "frame_list": [],
     "frame_serialization": true
 }

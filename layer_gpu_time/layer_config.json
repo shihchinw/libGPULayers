@@ -1,0 +1,7 @@
+{
+    "layer": "VK_LAYER_LGL_gpu_time",
+    "frame_mode": "periodic",
+    "periodic_min_frame": 1,
+    "periodic_frame": 10,
+    "frame_list": [5, 8, 13, 21]
+}

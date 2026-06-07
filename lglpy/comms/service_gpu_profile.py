@@ -183,7 +183,7 @@ class GPUProfileService:
 
         for counter in message['counters']:
             value = list(counter.values())[0]
-            columns.append(f'{value:0.2f}')
+            columns.append(f'{value:0.4f}')
         columns.append('|'.join(message['labels']))
 
         self.table_data.append(columns)
