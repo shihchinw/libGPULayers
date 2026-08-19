@@ -390,13 +390,26 @@ Device::Device(
 
 Device::~Device()
 {
+}
+
+void Device::releaseDriverResources()
+{
     processDeferredFrames(true);
+
     for (size_t i = 0; i < POOL_COUNT; ++i)
     {
         if (queryPools[i] != VK_NULL_HANDLE)
         {
             driver.vkDestroyQueryPool(device, queryPools[i], nullptr);
+            queryPools[i] = VK_NULL_HANDLE;
         }
+    }
+
+    clearFrameQueries();
+    {
+        std::lock_guard<std::mutex> lockPending {pendingMutex};
+        currentFrameQueries.clear();
+        pendingFrames.clear();
     }
 }
 

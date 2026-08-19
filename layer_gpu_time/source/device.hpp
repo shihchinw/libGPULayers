@@ -167,8 +167,18 @@ public:
 
     /**
      * @brief Destroy this layer device object.
+     *
+     * This does not call Vulkan driver functions. Driver-owned resources must
+     * be released with releaseDriverResources() before destroying VkDevice.
      */
     ~Device();
+
+    /**
+     * @brief Release resources owned by this layer while the VkDevice is live.
+     *
+     * This must be called before forwarding vkDestroyDevice to the driver.
+     */
+    void releaseDriverResources();
 
 public:
     /**
@@ -188,7 +198,10 @@ public:
      */
     void txMessage(const std::string& message)
     {
-        commsWrapper->txMessage(message);
+        if (commsWrapper)
+        {
+            commsWrapper->txMessage(message);
+        }
     }
 
     /**

@@ -27,6 +27,13 @@
 
 #include <vulkan/vulkan.h>
 
+// Functions for devices
+
+/* See Vulkan API for documentation. */
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkDestroyDevice<user_tag>(VkDevice device,
+                                                           const VkAllocationCallbacks* pAllocator);
+
 // Functions for command pools
 
 /* See Vulkan API for documentation. */
