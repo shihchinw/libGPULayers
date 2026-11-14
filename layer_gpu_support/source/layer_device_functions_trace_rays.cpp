@@ -25,6 +25,7 @@
 
 #include "device.hpp"
 #include "framework/device_dispatch_table.hpp"
+#include "shader_dump.hpp"
 
 #include <mutex>
 
@@ -145,6 +146,11 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdTraceRaysIndirect2KHR<user_tag>(VkCommandB
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
 
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordTraceRays(commandBuffer);
+    }
+
     // Release the lock to call into the driver
     lock.unlock();
 
@@ -168,6 +174,11 @@ VKAPI_ATTR void VKAPI_CALL
     // Hold the lock to access layer-wide global store
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
+
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordTraceRays(commandBuffer);
+    }
 
     // Release the lock to call into the driver
     lock.unlock();
@@ -199,6 +210,11 @@ VKAPI_ATTR void VKAPI_CALL
     // Hold the lock to access layer-wide global store
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
+
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordTraceRays(commandBuffer);
+    }
 
     // Release the lock to call into the driver
     lock.unlock();

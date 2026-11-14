@@ -25,6 +25,7 @@
 
 #include "device.hpp"
 #include "framework/device_dispatch_table.hpp"
+#include "shader_dump.hpp"
 
 #include <map>
 #include <mutex>
@@ -162,7 +163,16 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateShaderModule<user_tag>(VkDevice dev
     newCreateInfo.pCode = code.data();
     newCreateInfo.codeSize = code.size() * sizeof(uint32_t);
 
-    return layer->driver.vkCreateShaderModule(device, &newCreateInfo, pAllocator, pShaderModule);
+    const VkResult result = layer->driver.vkCreateShaderModule(device, &newCreateInfo, pAllocator, pShaderModule);
+    if (result == VK_SUCCESS && layer->shaderDump && layer->shaderDump->enabled())
+    {
+        layer->shaderDump->recordShaderModule(*pShaderModule,
+                                              code.data(),
+                                              code.size(),
+                                              pCreateInfo->pCode,
+                                              pCreateInfo->codeSize / sizeof(uint32_t));
+    }
+    return result;
 }
 
 /* See Vulkan API for documentation. */
@@ -306,10 +316,28 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateComputePipelines<user_tag>(VkDevice
         pipelineCache = VK_NULL_HANDLE;
     }
 
+    std::vector<VkComputePipelineCreateInfo> createInfos(pCreateInfos, pCreateInfos + createInfoCount);
+    if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
+    {
+        for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+    }
+
     // Release the lock to call into the driver
     lock.unlock();
-    return layer->driver
-        .vkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    const VkResult result = layer->driver
+        .vkCreateComputePipelines(device, pipelineCache, createInfoCount, createInfos.data(), pAllocator, pPipelines);
+    if ((result == VK_SUCCESS || result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
+    {
+        for (uint32_t i = 0; i < createInfoCount; ++i)
+        {
+            if (pPipelines[i] != VK_NULL_HANDLE)
+            {
+                layer->shaderDump->recordComputePipeline(device, layer->driver, pPipelines[i], createInfos[i],
+                                                         layer->pipelineExecutableInfoEnabled);
+            }
+        }
+    }
+    return result;
 }
 
 /* See Vulkan API for documentation. */
@@ -333,10 +361,28 @@ VKAPI_ATTR VkResult VKAPI_CALL
         pipelineCache = VK_NULL_HANDLE;
     }
 
+    std::vector<VkGraphicsPipelineCreateInfo> createInfos(pCreateInfos, pCreateInfos + createInfoCount);
+    if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
+    {
+        for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+    }
+
     // Release the lock to call into the driver
     lock.unlock();
-    return layer->driver
-        .vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    const VkResult result = layer->driver
+        .vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, createInfos.data(), pAllocator, pPipelines);
+    if ((result == VK_SUCCESS || result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
+    {
+        for (uint32_t i = 0; i < createInfoCount; ++i)
+        {
+            if (pPipelines[i] != VK_NULL_HANDLE)
+            {
+                layer->shaderDump->recordGraphicsPipeline(device, layer->driver, pPipelines[i], createInfos[i],
+                                                          layer->pipelineExecutableInfoEnabled);
+            }
+        }
+    }
+    return result;
 }
 
 /* See Vulkan API for documentation. */
@@ -361,13 +407,31 @@ VKAPI_ATTR VkResult VKAPI_CALL
         pipelineCache = VK_NULL_HANDLE;
     }
 
+    std::vector<VkRayTracingPipelineCreateInfoKHR> createInfos(pCreateInfos, pCreateInfos + createInfoCount);
+    if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
+    {
+        for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+    }
+
     // Release the lock to call into the driver
     lock.unlock();
-    return layer->driver.vkCreateRayTracingPipelinesKHR(device,
-                                                        deferredOperation,
-                                                        pipelineCache,
-                                                        createInfoCount,
-                                                        pCreateInfos,
-                                                        pAllocator,
-                                                        pPipelines);
+    const VkResult result = layer->driver.vkCreateRayTracingPipelinesKHR(device,
+                                                                          deferredOperation,
+                                                                          pipelineCache,
+                                                                          createInfoCount,
+                                                                          createInfos.data(),
+                                                                          pAllocator,
+                                                                          pPipelines);
+    if ((result == VK_SUCCESS || result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
+    {
+        for (uint32_t i = 0; i < createInfoCount; ++i)
+        {
+            if (pPipelines[i] != VK_NULL_HANDLE)
+            {
+                layer->shaderDump->recordRayTracingPipeline(device, layer->driver, pPipelines[i], createInfos[i],
+                                                            layer->pipelineExecutableInfoEnabled);
+            }
+        }
+    }
+    return result;
 }

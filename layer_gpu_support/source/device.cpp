@@ -29,24 +29,39 @@
 #include "framework/manual_functions.hpp"
 #include "framework/utils.hpp"
 #include "instance.hpp"
+#include "layer_comms.hpp"
+#include "shader_dump.hpp"
 
 /**
  * @brief The dispatch lookup for all of the created Vulkan instances.
  */
 static std::unordered_map<void*, std::unique_ptr<Device>> g_devices;
 
+extern std::mutex g_vulkanLock;
+
 /* Predeclare custom DeviceCreatePatch functions */
 static void modifyDeviceRobustBufferAccess(Instance& instance,
                                            VkPhysicalDevice physicalDevice,
                                            vku::safe_VkDeviceCreateInfo& createInfo,
                                            std::vector<std::string>& supported);
+static void enablePipelineExecutableProperties(Instance& instance,
+                                               VkPhysicalDevice physicalDevice,
+                                               vku::safe_VkDeviceCreateInfo& createInfo,
+                                               std::vector<std::string>& supported);
 
 /* See header for documentation. */
 const std::vector<DeviceCreatePatchPtr> Device::createInfoPatches {
     enableDeviceVkKhrTimelineSemaphore,
     enableDeviceVkExtImageCompressionControl,
-    modifyDeviceRobustBufferAccess
+    modifyDeviceRobustBufferAccess,
+    enablePipelineExecutableProperties
 };
+
+/* See header for documentation. */
+std::unique_ptr<Comms::CommsModule> Device::commsModule;
+
+/* See header for documentation. */
+std::unique_ptr<ShaderDumpComms> Device::commsWrapper;
 
 /* See header for documentation. */
 void Device::store(VkDevice handle, std::unique_ptr<Device> device)
@@ -105,6 +120,28 @@ Device::Device(Instance* _instance,
 
     initDriverDeviceDispatchTable(device, nlayerGetProcAddress, driver);
 
+    auto* executableFeatures = vku::FindStructInPNextChain<VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR>(
+        const_cast<void*>(createInfo.pNext));
+    pipelineExecutableInfoEnabled = executableFeatures && executableFeatures->pipelineExecutableInfo;
+
+    if (instance->config.shader_dump_enable())
+    {
+        {
+            std::lock_guard<std::mutex> lock {g_vulkanLock};
+            if (!commsModule)
+            {
+                commsModule = std::make_unique<Comms::CommsModule>("lglcomms");
+                commsWrapper = std::make_unique<ShaderDumpComms>(*commsModule);
+            }
+        }
+        shaderDump = std::make_unique<ShaderDump>(instance->config.shader_dump_output_path(),
+                                                  instance->config.shader_dump_clear_output(),
+                                                  instance->config.shader_dump_frame_summary(),
+                                                  instance->config.shader_dump_frame_start(),
+                                                  instance->config.shader_dump_frame_count(),
+                                                  instance->config.shader_dump_detailed(), commsWrapper.get());
+    }
+
     VkSemaphoreTypeCreateInfo timelineCreateInfo {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
         .pNext = nullptr,
@@ -125,6 +162,9 @@ Device::Device(Instance* _instance,
         queueSerializationTimelineSem = nullptr;
     }
 }
+
+/* See header for documentation. */
+Device::~Device() = default;
 
 /**
  * Allow a force enable/disable of robustBufferAccess feature.
@@ -217,4 +257,50 @@ static void modifyDeviceRobustBufferAccess(Instance& instance,
     {
         LAYER_LOG("Device feature already disabled: robustBufferAccess");
     }
+}
+
+/** Enable pipeline executable queries when shader dumping requests them. */
+static void enablePipelineExecutableProperties(Instance& instance,
+                                               VkPhysicalDevice physicalDevice,
+                                               vku::safe_VkDeviceCreateInfo& createInfo,
+                                               std::vector<std::string>& supported)
+{
+    if (!instance.config.shader_dump_enable() || !instance.config.shader_dump_capture_statistics())
+    {
+        return;
+    }
+
+    static const std::string target {VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME};
+    if (!isIn(target, supported))
+    {
+        LAYER_LOG("Pipeline executable properties unavailable; using SPIR-V-only dump");
+        return;
+    }
+
+    VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR supportedFeatures = vku::InitStructHelper();
+    VkPhysicalDeviceFeatures2 query = vku::InitStructHelper(&supportedFeatures);
+    instance.driver.vkGetPhysicalDeviceFeatures2(physicalDevice, &query);
+    if (!supportedFeatures.pipelineExecutableInfo)
+    {
+        LAYER_LOG("Pipeline executable information feature unavailable; using SPIR-V-only dump");
+        return;
+    }
+
+    if (vku::AddExtension(createInfo, target.c_str()))
+    {
+        LAYER_LOG("Device extension added: %s", target.c_str());
+    }
+
+    void* pNextBase = const_cast<void*>(createInfo.pNext);
+    auto* config = vku::FindStructInPNextChain<VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR>(pNextBase);
+    if (config)
+    {
+        config->pipelineExecutableInfo = VK_TRUE;
+        return;
+    }
+
+    VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR features = vku::InitStructHelper();
+    features.pipelineExecutableInfo = VK_TRUE;
+    vku::AddToPnext(createInfo, features);
+    LAYER_LOG("Device feature enabled: pipelineExecutableInfo");
 }

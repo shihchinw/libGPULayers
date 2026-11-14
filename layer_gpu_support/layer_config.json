@@ -37,6 +37,16 @@
         "disable_relaxed_precision": false,
         "enable_spirv_fuzz": false
     },
+    "shader_dump": {
+        "enable": true,
+        "output_path": "/data/local/tmp/lgl-shader-dump",
+        "mode": "compact",
+        "capture_statistics": true,
+        "capture_debug_utils": true,
+        "usage_capture": "frame_summary",
+        "frame_start": 0,
+        "frame_count": 300
+    },
     "framebuffer": {
         "disable_compression": false,
         "force_default_compression": false,

@@ -160,6 +160,96 @@ compiler handles compilation tasks.
 }
 ```
 
+### Shader dump
+
+The layer can capture content-addressed SPIR-V modules and pipeline executable
+statistics. The supplied configuration enables compact capture. When statistics
+are requested the layer
+enables `VK_KHR_pipeline_executable_properties` only if the device supports the
+extension and its `pipelineExecutableInfo` feature. Unsupported devices still
+dump SPIR-V modules and pipeline metadata.
+
+```jsonc
+"shader_dump": {
+    "enable": true,
+    "output_path": "/data/local/tmp/lgl-shader-dump",
+    "mode": "compact",              // "compact" or "detailed"
+    "capture_statistics": true,
+    "capture_debug_utils": true,
+    "usage_capture": "frame_summary", // "frame_summary" or "aggregate_only"
+    "frame_start": 0,                  // First present-counted frame
+    "frame_count": 300                 // 0 = no limit
+}
+```
+
+When launched through `lgl_android_install.py --pull-artifact <host-directory>`,
+the installer honors `shader_dump.enable`. When enabled it redirects output to
+`/sdcard/Android/data/<package>/files/lgl-artifacts/shader-dump`. It then
+pulls the shader data into a timestamped `<host-directory>/<YYYYMMDD_HHMMSS>_<package>`
+directory and automatically generates `shader_usage_report.html` there when
+capture finishes.
+
+`mode` controls output size. `compact` is the default and retains the three report
+inputs: `shaders/<SHA1>.spirv`, `pipelines/*.json`, and
+`tables/usage_by_label.csv` on the device. On the host, the installer places
+`usage_by_label.csv` and other raw CSV files directly in the capture directory,
+alongside the report and its CSV exports, omitting `shader-dump/`, `tables/`,
+and `summary/` wrappers. This is sufficient for SHA1 lookup, SPIR-V source
+conversion, pipeline executable analysis, CPU-side hotness, and debug label
+association. `detailed` additionally retains shader metadata JSON,
+`shaders.csv`, raw executable CSV tables, per-frame JSON, and debug object
+names for detailed capture diagnosis.
+
+The pipeline table defaults to descending command count and hides pipelines
+with no recorded commands or frames. Select `Show unused pipelines` to include
+them. Search filters update the table while preserving input focus and cursor
+position.
+
+The overview separates capture totals from used-pipeline counts. Graphics and
+compute counts refer to used pipelines. Toolbars show filtered result counts.
+Both tables sort every column by clicking its entire header cell or pressing
+Enter or Space on its button, preserving table scroll positions. SHA tooltips
+show full identifiers; copy buttons and HTML Rank columns are omitted.
+Opening a shader candidate highlights and focuses its visible shader row.
+Escape closes detail panels.
+
+The Help tab explains data scope, capture-relative flags, sorting, and fields.
+Flags are investigation hints, not verified GPU bottlenecks. Pipeline flag
+buttons match any selected tag; Clear Tags resets only those selections.
+The list-plus icon includes unused entries. Shader Type buttons filter stages.
+Switching tabs preserves search, filters, and sort settings.
+
+The Shaders toolbar hides zero-inherited-command shaders by default. Enable
+Show Unused Shaders to include them. Zero means no commands were recorded
+for their referencing pipelines in this capture, not permanent non-use.
+Shader pass groups are the deduplicated union from referencing pipelines;
+inherited commands count each referencing pipeline once.
+
+Report summaries are `pipeline_summary.csv` and `shader_summary.csv`, without
+rank columns, plus `pipeline_shader_links.csv` and `pipeline_statistics.csv`.
+`pipeline_signature` is a SHA1 of pipeline kind and shader stage/entry-point
+identities, not full pipeline state. The original `usage_by_label.csv` filename
+is retained.
+
+Pipeline JSON preserves vendor-defined statistic names and values; tools must
+not assume that a statistic called "registers" or "spills" is available on
+every driver. With `frame_summary`, `usage_by_label.csv` contains one aggregate
+record per `(frame, pipeline signature, debug label path)`. Counts are commands
+recorded by the CPU, not GPU execution time. `VK_EXT_debug_utils` command buffer
+label scopes are captured when the application uses that extension.
+
+Generate an offline report with:
+
+```sh
+python layer_gpu_support/scripts/shader_dump_report.py <shader-dump-directory>
+```
+
+This reads `pipelines/` and `usage_by_label.csv` directly from the capture
+directory and writes `shader_usage_report.html` and CSV exports there. Use `--output` to
+choose a separate report directory. The report is intended
+for devices supporting `VK_KHR_pipeline_executable_properties`; it retains the
+vendor-defined statistics and currently recognizes QCOM and Mali conventions.
+
 ## Framebuffers
 
 The framebuffer overrides allow some control over how the framebuffers are

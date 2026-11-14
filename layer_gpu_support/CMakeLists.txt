@@ -40,4 +40,5 @@ include(../cmake/clang-tools.cmake)
 
 # Build steps
 add_subdirectory(source)
+add_subdirectory(../source_common/comms source_common/comms)
 add_subdirectory(../source_common/framework source_common/framework)

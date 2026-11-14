@@ -30,6 +30,9 @@
 
 #pragma once
 
+#include <cstdint>
+#include <string>
+
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -140,6 +143,34 @@ public:
      */
     bool shader_fuzz_spirv_hash() const;
 
+    // Config queries for shader dumping
+
+    /** @brief True if shader and pipeline dumping is enabled. */
+    bool shader_dump_enable() const;
+
+    /** @brief Target directory for shader dump files. */
+    const std::string& shader_dump_output_path() const;
+
+    /** @brief True if pipeline executable statistics should be captured. */
+    bool shader_dump_capture_statistics() const;
+
+    /** @brief True if shader dump should retain detailed diagnostic data. */
+    bool shader_dump_detailed() const;
+
+    bool shader_dump_clear_output() const;
+
+    /** @brief True if debug utils object names and labels should be captured. */
+    bool shader_dump_capture_debug_utils() const;
+
+    /** @brief True if per-frame usage summaries should be written. */
+    bool shader_dump_frame_summary() const;
+
+    /** @brief First frame included in usage capture. */
+    uint32_t shader_dump_frame_start() const;
+
+    /** @brief Number of frames included in usage capture; zero means unlimited. */
+    uint32_t shader_dump_frame_count() const;
+
     // Config queries for framebuffers
 
     /**
@@ -192,6 +223,9 @@ private:
      * @throws json::out_of_bounds if required fields are missing.
      */
     void parse_shader_options(const json& config);
+
+    /** @brief Parse shader dump configuration. */
+    void parse_shader_dump_options(const json& config);
 
     /**
      * @brief Parse the configuration options for the framebuffer module.
@@ -287,6 +321,29 @@ private:
      * @brief True if we change SPIR-V to change the program hash.
      */
     bool conf_shader_enable_fuzz_spirv_hash {false};
+
+    /** @brief True if shader dumping is enabled. */
+    bool conf_shader_dump_enable {false};
+
+    /** @brief Target directory for shader dump files. */
+    std::string conf_shader_dump_output_path;
+
+    /** @brief True if pipeline executable statistics should be captured. */
+    bool conf_shader_dump_capture_statistics {true};
+    bool conf_shader_dump_detailed {false};
+    bool conf_shader_dump_clear_output {false};
+
+    /** @brief True if debug utils data should be captured. */
+    bool conf_shader_dump_capture_debug_utils {true};
+
+    /** @brief True if per-frame usage summaries should be written. */
+    bool conf_shader_dump_frame_summary {true};
+
+    /** @brief First frame included in usage capture. */
+    uint32_t conf_shader_dump_frame_start {0};
+
+    /** @brief Number of frames included in usage capture; zero means unlimited. */
+    uint32_t conf_shader_dump_frame_count {300};
 
     /**
      * @brief True if we disable all framebuffer compression.

@@ -27,6 +27,54 @@
 
 #include <vulkan/vulkan.h>
 
+// Functions for shader dump usage tracking
+
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkBeginCommandBuffer<user_tag>(VkCommandBuffer commandBuffer,
+                                                                    const VkCommandBufferBeginInfo* pBeginInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBindPipeline<user_tag>(VkCommandBuffer commandBuffer,
+                                                             VkPipelineBindPoint pipelineBindPoint,
+                                                             VkPipeline pipeline);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDraw<user_tag>(VkCommandBuffer commandBuffer,
+                                                     uint32_t vertexCount,
+                                                     uint32_t instanceCount,
+                                                     uint32_t firstVertex,
+                                                     uint32_t firstInstance);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexed<user_tag>(VkCommandBuffer commandBuffer,
+                                                            uint32_t indexCount,
+                                                            uint32_t instanceCount,
+                                                            uint32_t firstIndex,
+                                                            int32_t vertexOffset,
+                                                            uint32_t firstInstance);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdBeginDebugUtilsLabelEXT<user_tag>(VkCommandBuffer commandBuffer,
+                                                                         const VkDebugUtilsLabelEXT* pLabelInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdEndDebugUtilsLabelEXT<user_tag>(VkCommandBuffer commandBuffer);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDebugMarkerBeginEXT<user_tag>(
+    VkCommandBuffer commandBuffer, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDebugMarkerEndEXT<user_tag>(VkCommandBuffer commandBuffer);
+
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkSetDebugUtilsObjectNameEXT<user_tag>(
+    VkDevice device, const VkDebugUtilsObjectNameInfoEXT* pNameInfo);
+
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkQueuePresentKHR<user_tag>(VkQueue queue,
+                                                                  const VkPresentInfoKHR* pPresentInfo);
+
 // Functions for render passes
 
 /* See Vulkan API for documentation. */

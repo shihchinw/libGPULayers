@@ -44,12 +44,15 @@ add_library(
         ../../source_common/framework/entry.cpp
         device.cpp
         instance.cpp
+        layer_comms.cpp
         layer_config.cpp
+        shader_dump.cpp
         layer_device_functions_dispatch.cpp
         layer_device_functions_image.cpp
         layer_device_functions_pipelines.cpp
         layer_device_functions_queue.cpp
         layer_device_functions_render_pass.cpp
+        layer_device_functions_shader_dump.cpp
         layer_device_functions_trace_rays.cpp
         layer_device_functions_transfer.cpp)
 
@@ -69,6 +72,7 @@ lgl_set_build_options(${VK_LAYER})
 
 target_link_libraries(
     ${VK_LAYER}
+        lib_layer_comms
         lib_layer_framework
         $<$<PLATFORM_ID:Android>:log>)
 

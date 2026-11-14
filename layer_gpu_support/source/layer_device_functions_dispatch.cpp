@@ -25,6 +25,7 @@
 
 #include "device.hpp"
 #include "framework/device_dispatch_table.hpp"
+#include "shader_dump.hpp"
 
 #include <mutex>
 
@@ -95,6 +96,11 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDispatch<user_tag>(VkCommandBuffer command
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
 
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordDispatch(commandBuffer);
+    }
+
     // Release the lock to call into the driver
     lock.unlock();
 
@@ -118,6 +124,11 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDispatchBase<user_tag>(VkCommandBuffer com
     // Hold the lock to access layer-wide global store
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
+
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordDispatch(commandBuffer);
+    }
 
     // Release the lock to call into the driver
     lock.unlock();
@@ -144,6 +155,11 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDispatchBaseKHR<user_tag>(VkCommandBuffer 
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
 
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordDispatch(commandBuffer);
+    }
+
     // Release the lock to call into the driver
     lock.unlock();
 
@@ -164,6 +180,11 @@ VKAPI_ATTR void VKAPI_CALL layer_vkCmdDispatchIndirect<user_tag>(VkCommandBuffer
     // Hold the lock to access layer-wide global store
     std::unique_lock<std::mutex> lock {g_vulkanLock};
     auto* layer = Device::retrieve(commandBuffer);
+
+    if (layer->shaderDump)
+    {
+        layer->shaderDump->recordDispatch(commandBuffer);
+    }
 
     // Release the lock to call into the driver
     lock.unlock();

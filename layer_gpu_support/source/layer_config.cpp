@@ -34,6 +34,7 @@
 #include "version.hpp"
 
 #include <fstream>
+#include <string>
 
 #include <vulkan/vulkan.h>
 
@@ -156,6 +157,31 @@ void LayerConfig::parse_shader_options(const json& config)
     LAYER_LOG(" - Disable binary cache: %d", conf_shader_disable_program_cache);
     LAYER_LOG(" - Disable relaxed precision %d", conf_shader_disable_relaxed_precision);
     LAYER_LOG(" - Enable SPIR-V hash fuzzer: %d", conf_shader_enable_fuzz_spirv_hash);
+}
+
+/* See header for documentation. */
+void LayerConfig::parse_shader_dump_options(const json& config)
+{
+    json dump = config.at("shader_dump");
+
+    conf_shader_dump_enable = dump.at("enable");
+    conf_shader_dump_output_path = dump.at("output_path");
+    conf_shader_dump_capture_statistics = dump.value("capture_statistics", true);
+    conf_shader_dump_detailed = dump.value("mode", "compact") == "detailed";
+    conf_shader_dump_clear_output = dump.value("clear_output", false);
+    conf_shader_dump_capture_debug_utils = dump.value("capture_debug_utils", true);
+    conf_shader_dump_frame_summary = dump.value("usage_capture", "frame_summary") == "frame_summary";
+    conf_shader_dump_frame_start = dump.value("frame_start", 0U);
+    conf_shader_dump_frame_count = dump.value("frame_count", 300U);
+
+    LAYER_LOG("Layer shader dump configuration");
+    LAYER_LOG("===============================");
+    LAYER_LOG(" - Enabled: %d", conf_shader_dump_enable);
+    LAYER_LOG(" - Output path: %s", conf_shader_dump_output_path.c_str());
+    LAYER_LOG(" - Capture executable statistics: %d", conf_shader_dump_capture_statistics);
+    LAYER_LOG(" - Capture mode: %s", conf_shader_dump_detailed ? "detailed" : "compact");
+    LAYER_LOG(" - Capture debug utils: %d", conf_shader_dump_capture_debug_utils);
+    LAYER_LOG(" - Capture frame summaries: %d", conf_shader_dump_frame_summary);
 }
 
 /* See header for documentation. */
@@ -301,6 +327,15 @@ LayerConfig::LayerConfig()
 
     try
     {
+        parse_shader_dump_options(data);
+    }
+    catch (const json::out_of_range& e)
+    {
+        LAYER_ERR("Failed to read shader dump config, using defaults");
+        LAYER_ERR("Error: %s", e.what());
+    }
+    try
+    {
         parse_framebuffer_options(data);
     }
     catch (const json::out_of_range& e)
@@ -411,6 +446,59 @@ bool LayerConfig::shader_disable_relaxed_precision() const
 bool LayerConfig::shader_fuzz_spirv_hash() const
 {
     return conf_shader_enable_fuzz_spirv_hash;
+}
+
+/* See header for documentation. */
+bool LayerConfig::shader_dump_enable() const
+{
+    return conf_shader_dump_enable;
+}
+
+/* See header for documentation. */
+const std::string& LayerConfig::shader_dump_output_path() const
+{
+    return conf_shader_dump_output_path;
+}
+
+/* See header for documentation. */
+bool LayerConfig::shader_dump_capture_statistics() const
+{
+    return conf_shader_dump_capture_statistics;
+}
+
+/* See header for documentation. */
+bool LayerConfig::shader_dump_detailed() const
+{
+    return conf_shader_dump_detailed;
+}
+
+bool LayerConfig::shader_dump_clear_output() const
+{
+    return conf_shader_dump_clear_output;
+}
+
+/* See header for documentation. */
+bool LayerConfig::shader_dump_capture_debug_utils() const
+{
+    return conf_shader_dump_capture_debug_utils;
+}
+
+/* See header for documentation. */
+bool LayerConfig::shader_dump_frame_summary() const
+{
+    return conf_shader_dump_frame_summary;
+}
+
+/* See header for documentation. */
+uint32_t LayerConfig::shader_dump_frame_start() const
+{
+    return conf_shader_dump_frame_start;
+}
+
+/* See header for documentation. */
+uint32_t LayerConfig::shader_dump_frame_count() const
+{
+    return conf_shader_dump_frame_count;
 }
 
 /* See header for documentation. */

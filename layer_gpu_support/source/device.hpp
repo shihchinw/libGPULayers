@@ -53,13 +53,18 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <vector>
 
 #include <vulkan/utility/vk_safe_struct.hpp>
 #include <vulkan/vk_layer.h>
 
 #include "framework/device_dispatch_table.hpp"
+#include "comms/comms_module.hpp"
 #include "instance.hpp"
+
+class ShaderDump;
+class ShaderDumpComms;
 
 /**
  * @brief Function pointer type for patching VkDeviceCreateInfo.
@@ -143,7 +148,7 @@ public:
     /**
      * @brief Destroy this layer device object.
      */
-    ~Device() = default;
+    ~Device();
 
 public:
     /**
@@ -166,6 +171,9 @@ public:
      */
     DeviceDispatchTable driver {};
 
+    /** @brief Optional shader dump recorder. */
+    std::unique_ptr<ShaderDump> shaderDump;
+
     /**
      * @brief The set of VkCreateDeviceInfo patches needed by this layer.
      */
@@ -176,8 +184,18 @@ public:
      */
     VkSemaphore queueSerializationTimelineSem {nullptr};
 
+    /** @brief True if pipeline executable information was enabled on this device. */
+    bool pipelineExecutableInfoEnabled {false};
+
     /**
      * @brief The current timeline sem target value the next use waits for.
      */
     uint64_t queueSerializationTimelineSemCount {0};
+
+private:
+    /** @brief Shared network transport for shader dump progress. */
+    static std::unique_ptr<Comms::CommsModule> commsModule;
+
+    /** @brief Shared endpoint encoder for shader dump progress. */
+    static std::unique_ptr<ShaderDumpComms> commsWrapper;
 };
