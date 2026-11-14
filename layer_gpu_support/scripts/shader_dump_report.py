@@ -14,7 +14,13 @@ import json
 import io
 import os
 import re
+import shlex
+import shutil
+import struct
+import subprocess
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from contextlib import redirect_stdout
 from pathlib import Path
 from urllib.parse import quote
 
@@ -173,6 +179,8 @@ def write_html(path, report):
     data = json.dumps(report, ensure_ascii=False).replace('</', r'<\/')
     document = r'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pipeline Executable Shader Profiling</title>
 <style>
+.shader-detail-tabs{position:sticky;top:-1rem;z-index:2;padding-top:.5rem}.tok-comment{color:#7ba77b}.tok-string{color:#e5b987}.tok-number{color:#b5cea8}.tok-keyword{color:#c792ea}.tok-type{color:#7dcfff}.tok-instruction{color:#82aaff}.tok-id{color:#ffd580}.tok-preprocessor{color:#d7ba7d}
+.source-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}.source-command{white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}.source-code{max-height:55vh;overflow:auto;background:#0c121a;padding:.5rem;font:12px/1.6 Consolas,monospace;tab-size:4}.source-line{display:block;white-space:pre;min-height:1.6em}.source-line::before{content:attr(data-line);display:inline-block;position:sticky;left:0;width:4.5em;margin-right:1em;text-align:right;color:var(--muted);background:#0c121a;user-select:none}.source-line.match{background:#594717}.source-tabs button[aria-selected="true"]{background:var(--blue)}
 :root{color-scheme:dark;--bg:#0d131c;--panel:#151f2c;--line:#29394c;--text:#e8eef6;--muted:#91a1b5;--blue:#194f89;--green:#176849;--orange:#9a5715;--amber:#765319;--red:#812f3d}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13px system-ui,sans-serif}button,input,select{font:inherit}button{color:inherit;background:#213148;border:1px solid #3a506d;border-radius:5px;padding:.38rem .6rem;cursor:pointer}button:hover,tr.click:hover{background:#304563}a{color:#87c4ff}.mono{font-family:ui-monospace,Consolas,monospace}.muted{color:var(--muted)}.wrap{overflow-wrap:anywhere}header{padding:1rem max(1.25rem,calc((100vw - 1550px)/2));border-bottom:1px solid var(--line)}h1{margin:0;font-size:1.25rem}h2{font-size:1rem;margin:.35rem 0}.status{font-size:14px;display:flex;gap:1rem;flex-wrap:wrap;margin-top:.4rem;color:var(--muted)}.status b{color:var(--text);font-size:16px}.tag.vertex{background:#ad650f;color:#fff2cc}.tag.fragment{background:var(--blue)}main{max-width:1550px;margin:auto;padding:1rem 1.25rem 3rem}.tabs{display:flex;gap:0;align-items:end;margin:0;border-bottom:1px solid var(--line);padding-left:.35rem;background:#111a25}.tab{position:relative;border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:0;background:transparent;color:var(--muted);padding:.55rem 1rem;margin:0}.tab:hover{background:#1b2838;color:var(--text)}.tab.active{background:var(--panel);color:var(--text);border-color:var(--line);margin-bottom:-1px;z-index:1}.toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:0 0 .7rem;padding:.7rem;background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 7px 7px}.kind-group{display:flex;gap:0}.kind-group .kind{border-radius:0;margin-left:-1px}.kind-group .kind:first-child{border-radius:5px 0 0 5px;margin-left:0}.kind-group .kind:last-child{border-radius:0 5px 5px 0}.kind.active.graphics,.graphics{background:var(--blue)}.kind.active.compute,.compute{background:var(--green)}.kind.active.ray_tracing,.ray_tracing{background:var(--orange)}.priority.active{background:var(--amber)}input,select{background:#0c121a;color:var(--text);border:1px solid #354a65;border-radius:5px;padding:.45rem .55rem}input[type="checkbox"]{min-width:0}input:not([type="checkbox"]){min-width:23rem;max-width:100%}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:7px;max-height:72vh}table{border-collapse:collapse;width:100%;background:var(--panel)}th,td{padding:.47rem .55rem;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}th{position:sticky;top:0;background:#1d2a3a;z-index:1}th button{padding:0;border:0;background:none;font-weight:700}.click{cursor:pointer}.tag{display:inline-block;border-radius:3px;padding:.12rem .38rem;margin:0 .2rem .15rem 0;font-size:.76rem;font-weight:700;letter-spacing:.02em}.risk{background:var(--red)}.warn{background:var(--amber)}.neutral{background:#35465c}.pressure{background:#56385d}.leaf{max-width:230px;overflow:hidden;text-overflow:ellipsis}.hidden{display:none!important}#detail{position:fixed;right:0;top:0;width:min(820px,100vw);height:100%;z-index:5;overflow:auto;background:#101a26;border-left:1px solid #3d5573;box-shadow:-10px 0 32px #000a;padding:1rem}.close{float:right}.detail-head{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.section{margin:1rem 0}.metric-panel{position:sticky;bottom:0;background:#202f41;border:1px solid #486282;padding:.7rem;border-radius:6px;margin-top:.6rem}.empty{padding:2rem;text-align:center;color:var(--muted)}@media(max-width:700px){main{padding:.75rem}.tabs{overflow:auto}header{padding:.8rem}input:not([type="checkbox"]){min-width:100%}th,td{padding:.4rem}}
 .status{gap:.6rem;align-items:stretch}.status-group{display:flex;flex-wrap:wrap;gap:.6rem 1rem;padding:.5rem .7rem;background:var(--panel);border:1px solid var(--line);border-radius:6px}.status-group>span{display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap}.status-group>span+span{border-left:1px solid var(--line);padding-left:1rem}.status span[title]{cursor:help}.status-scope{font-size:12px;color:var(--muted);align-self:center}.results{margin:.6rem 0;color:var(--muted)}.copy-sha{font:11px system-ui;padding:.15rem .3rem;margin-left:.4rem}.detail-nav{display:flex;justify-content:flex-end;margin-bottom:.7rem}.help-link{padding:0 .2rem;border:0;background:transparent;color:#87c4ff;font-size:15px}.help-page{max-width:1000px;line-height:1.65}.help-page section{margin:1.5rem 0;padding:1rem;background:var(--panel);border:1px solid var(--line);border-radius:7px;scroll-margin-top:1rem}.help-page h2{font-size:18px}.help-page details{margin-top:.7rem}.help-page summary{cursor:pointer;color:#87c4ff}.help-table{overflow:auto}.help-table th,.help-table td{white-space:normal;min-width:110px}.help-table td:nth-child(2){min-width:240px}.help-contents{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}tr.selected{background:#213d57;box-shadow:inset 3px 0 #87c4ff}tr[data-shader]:focus-visible{outline:2px solid #87c4ff;outline-offset:-2px}.pass-cell{display:inline-flex;align-items:center;gap:.25rem}.pass-cell .tag{margin-bottom:0}.pass-more{padding:.12rem .35rem;font-size:12px}.pass-popover{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:1rem;width:min(600px,90vw);max-height:65vh;overflow:auto;white-space:normal;box-shadow:0 8px 32px #000a}.pass-popover>div{padding:.4rem 0;border-top:1px solid var(--line)}.pass-popover::backdrop{background:#0003}th.sortable{cursor:pointer;padding:0}th.sortable button{display:block;width:100%;min-height:2.3rem;padding:.47rem .55rem;text-align:left;border-radius:0}th.sortable:hover{background:#304563}th.sortable:focus-within{outline:2px solid #87c4ff;outline-offset:-2px}.unused-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:32px;padding:5px}.unused-toggle.active,.filter-tag.active{background:#194f89;border-color:#87c4ff;color:#fff}.tag-filters{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center}.filter-tag{font-size:11px;padding:.3rem .4rem}.filter-tag:focus-visible,.unused-toggle:focus-visible{outline:2px solid #87c4ff;outline-offset:2px}.clear-tags{display:inline-flex;align-items:center;justify-content:center;padding:.3rem;width:28px;height:27px}.clear-tags[aria-disabled="true"]{opacity:.4}.clear-tags:focus-visible{outline:2px solid #87c4ff;outline-offset:2px}.referencing-head{display:flex;align-items:center;gap:.6rem;flex-wrap:nowrap}.referencing-head h3{margin:0}.referencing-head .unused-toggle{flex-shrink:0}.info-page{max-width:none;line-height:1.35}.info-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin:0 0 .75rem;padding-bottom:.6rem;border-bottom:1px solid var(--line)}.info-heading>pre{flex-basis:100%}.info-heading h2{margin:0;font-size:16px}.info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;align-items:start}.info-page .info-card{min-width:0;margin:0;padding:.65rem .75rem}.info-group{min-width:0}.info-group h3{font-size:13px;margin:0 0 .4rem;color:var(--text)}.info-page th{position:static;width:42%;font:12px system-ui;color:var(--muted);background:transparent}.info-page td{font-size:12px}.info-page table{table-layout:fixed}.info-page .help-table th,.info-page .help-table td,.info-page .help-table td:nth-child(2){min-width:0;padding:.25rem .3rem;white-space:normal}.info-page tr:last-child>*{border-bottom:0}.info-page pre{white-space:pre-wrap;font-size:11px;max-height:320px;overflow:auto;margin:.4rem 0 0}.info-page details{margin:0}.info-page summary{overflow-wrap:anywhere}.info-page .info-footnote{margin:.65rem 0;font-size:12px;color:var(--muted)}.info-page .info-footnote p{margin:.4rem 0}@media(max-width:1200px){.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.info-grid{grid-template-columns:minmax(0,1fr)}}.kind.active.vertex{background:#ad650f;color:#fff2cc}.kind.active.fragment{background:var(--blue)}</style><body><header><h1 id="report-title">GPU Shader Profiling Template</h1><div class="status" id="status"></div></header><main><nav class="tabs" id="tabs"></nav><section class="toolbar" id="toolbar"></section><div id="results" class="results" role="status" aria-live="polite"></div><section id="content"></section></main><aside id="detail" class="hidden"></aside><script id="report-data" type="application/json">__DATA__</script>
 <script>
@@ -197,7 +205,88 @@ function shaderTable(rows){rows=[...rows].sort((a,b)=>{const x=shaderSortValue(a
 const preferredStats=D.detail_order||[];let selectedMetric='',metricSort='recommended',selectedExecutable=0;
 function statValue(v){const n=Number(v);return Number.isFinite(n)?n:-Infinity}function statRows(executables){const byName=new Map();for(const exe of executables)for(const stat of exe.statistics){const row=byName.get(stat.name)||{name:stat.name,description:stat.description||'',values:{}};row.values[exe.index]=stat.value;byName.set(stat.name,row)}return [...byName.values()]}
 function chooseMetric(name){selectedMetric=name;renderStats()}function selectExecutable(index){selectedExecutable=index;metricSort='selected';renderStats()}function selectMetricOrder(value){metricSort=value;renderStats()}function renderStats(){const box=$('#stats');if(!box)return;const executables=box._executables||[],rows=statRows(executables),rank=name=>{const i=preferredStats.indexOf(name);return i<0?1000:i};rows.sort((a,b)=>{if(metricSort==='max')return Math.max(...Object.values(b.values).map(statValue))-Math.max(...Object.values(a.values).map(statValue));if(metricSort==='spread'){const spread=x=>{const v=Object.values(x.values).map(statValue);return Math.max(...v)-Math.min(...v)};return spread(b)-spread(a)}if(metricSort==='selected')return statValue(b.values[selectedExecutable])-statValue(a.values[selectedExecutable]);return rank(a.name)-rank(b.name)||a.name.localeCompare(b.name)});const current=rows.find(x=>x.name===selectedMetric)||rows[0];box.innerHTML=`<div class="toolbar"><label class="muted">Sort metric rows: <select onchange="selectMetricOrder(this.value)"><option value="recommended" ${metricSort==='recommended'?'selected':''}>Recommended order</option><option value="max" ${metricSort==='max'?'selected':''}>Max across executables</option><option value="spread" ${metricSort==='spread'?'selected':''}>Largest spread</option><option value="selected" ${metricSort==='selected'?'selected':''}>Selected executable</option></select></label><span class="muted">Click an executable header to select it; click a metric row for its description.</span></div><div class="table-wrap"><table><thead><tr><th>Statistic</th>${executables.map(e=>`<th><button onclick="selectExecutable(${e.index})">${esc(e.name||'Executable')} #${e.index}${selectedExecutable===e.index?' ↓':''}</button></th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr class="click" onclick='chooseMetric(${JSON.stringify(r.name)})'><td>${esc(r.name)}</td>${executables.map(e=>`<td>${r.values[e.index]===undefined?'—':esc(r.values[e.index])}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="metric-panel"><b>${esc(current?.name||'No statistics')}</b><div class="muted">${esc(current?.description||'The driver supplied no description for this statistic.')}</div></div>`}window.chooseMetric=chooseMetric;window.selectExecutable=selectExecutable;window.selectMetricOrder=selectMetricOrder;
-let currentShader=null,showUnusedShaderPipelines=false;function renderShaderPipelines(){const ids=new Set((LS.get(currentShader)||[]).map(l=>l.pipeline_signature)),rows=[...ids].map(id=>P.get(id)).filter(p=>p&&(showUnusedShaderPipelines||p.command_count>0||p.active_frames>0));$('#shader-pipelines').innerHTML=`<div class="results">Showing ${n(rows.length)} / ${n(ids.size)} pipelines</div>`+triage(rows,'')}function toggleUnusedShaderPipelines(value){showUnusedShaderPipelines=value;const button=$('#detail .referencing-head .unused-toggle');if(button){button.classList.toggle('active',value);button.setAttribute('aria-pressed',String(value))}renderShaderPipelines()}window.toggleUnusedShaderPipelines=toggleUnusedShaderPipelines;function openPipeline(id){const p=P.get(id);if(!p)return;navigateDetail();currentShader=null;const links=LP.get(id)||[],executables=D.statistics[id]||[];$('#detail').innerHTML=`${detailNav()}<div class="detail-head"><h2>Pipeline</h2>${typeTag(p.kind)}${tags(p)}</div><p class="mono wrap">${esc(id)}</p><div class="section"><b>${n(p.command_count)} CPU commands</b> · ${n(p.active_frames)} active frames<br>${pass(p)}<details><summary>Raw labels (${p.labels.length})</summary><p class="wrap">${p.labels.map(esc).join('<br>')}</p></details></div><div class="section"><h3>Shader Candidates</h3><p class="muted">Pipeline pressure is executable-level; these are related stages, not per-stage attribution.</p>${links.map(l=>`<div><button class="mono" onclick="openShader('${l.shader_sha1}')">${esc(short(l.shader_sha1))}</button> ${typeTag(l.stage)} ${esc(l.entry_point)} · <a href="../shaders/${l.shader_sha1}.spirv">SPIR-V</a></div>`).join('')||'<p class="muted">No shader metadata.</p>'}</div><div class="section"><h3>Executable Statistics Matrix</h3><div id="stats"></div></div>`;const box=$('#stats');box._executables=executables;selectedMetric='';metricSort='recommended';selectedExecutable=executables[0]?.index??0;renderStats();$('#detail').classList.remove('hidden');$('#detail').scrollTop=0;$('#detail .detail-nav button:not([disabled])').focus();location.hash=`pipeline/${id}`}function openShader(id){if(!S.has(id))return;navigateDetail();selectedShader=id;currentShader=id;showUnusedShaderPipelines=false;const s=S.get(id),variants=[...new Set((LS.get(id)||[]).map(l=>l.pipeline_signature))].map(x=>P.get(x)).filter(Boolean);if(!s)return;$('#detail').innerHTML=`${detailNav()}<h2>Shader Candidate</h2><p class="mono wrap">${esc(id)}</p><p><a href="../shaders/${id}.spirv">Open SPIR-V</a> · ${n(s.pipeline_command_count)} inherited commands · ${variants.length} pipeline variants</p><div class="section"><div class="referencing-head"><h3>Referencing Pipelines</h3>${unusedButton(showUnusedShaderPipelines,'toggleUnusedShaderPipelines(!showUnusedShaderPipelines)')}</div><div id="shader-pipelines"></div></div>`;$('#detail').classList.remove('hidden');$('#detail').scrollTop=0;$('#detail .detail-nav button:not([disabled])').focus();renderShaderPipelines();focusShaderRow(id);location.hash=`shader/${id}`}function closeDetail(){currentShader=null;if(detailOrigin?.isConnected)detailOrigin.focus();$('#detail').classList.add('hidden');history.replaceState(null,'',location.pathname+location.search)}window.openPipeline=openPipeline;window.openShader=openShader;window.closeDetail=closeDetail;
+let currentShader=null,showUnusedShaderPipelines=false;function renderShaderPipelines(){const ids=new Set((LS.get(currentShader)||[]).map(l=>l.pipeline_signature)),rows=[...ids].map(id=>P.get(id)).filter(p=>p&&(showUnusedShaderPipelines||p.command_count>0||p.active_frames>0));$('#shader-pipelines').innerHTML=`<div class="results">Showing ${n(rows.length)} / ${n(ids.size)} pipelines</div>`+triage(rows,'')}function toggleUnusedShaderPipelines(value){showUnusedShaderPipelines=value;const button=$('#detail .referencing-head .unused-toggle');if(button){button.classList.toggle('active',value);button.setAttribute('aria-pressed',String(value))}renderShaderPipelines()}window.toggleUnusedShaderPipelines=toggleUnusedShaderPipelines;function openPipeline(id){const p=P.get(id);if(!p)return;navigateDetail();currentShader=null;const links=LP.get(id)||[],executables=D.statistics[id]||[];$('#detail').innerHTML=`${detailNav()}<div class="detail-head"><h2>Pipeline</h2>${typeTag(p.kind)}${tags(p)}</div><p class="mono wrap">${esc(id)}</p><div class="section"><b>${n(p.command_count)} CPU commands</b> · ${n(p.active_frames)} active frames<br>${pass(p)}<details><summary>Raw labels (${p.labels.length})</summary><p class="wrap">${p.labels.map(esc).join('<br>')}</p></details></div><div class="section"><h3>Shader Candidates</h3><p class="muted">Pipeline pressure is executable-level; these are related stages, not per-stage attribution.</p>${links.map(l=>`<div><button class="mono" onclick="openShader('${l.shader_sha1}')">${esc(short(l.shader_sha1))}</button> ${typeTag(l.stage)} ${esc(l.entry_point)} · <a href="../shaders/${l.shader_sha1}.spirv">SPIR-V</a></div>`).join('')||'<p class="muted">No shader metadata.</p>'}</div><div class="section"><h3>Executable Statistics Matrix</h3><div id="stats"></div></div>`;const box=$('#stats');box._executables=executables;selectedMetric='';metricSort='recommended';selectedExecutable=executables[0]?.index??0;renderStats();$('#detail').classList.remove('hidden');$('#detail').scrollTop=0;$('#detail .detail-nav button:not([disabled])').focus();location.hash=`pipeline/${id}`}function openShader(id){if(!S.has(id))return;navigateDetail();selectedShader=id;currentShader=id;showUnusedShaderPipelines=false;const s=S.get(id),variants=[...new Set((LS.get(id)||[]).map(l=>l.pipeline_signature))].map(x=>P.get(x)).filter(Boolean);if(!s)return;$('#detail').innerHTML=`${detailNav()}<h2>Shader Candidate</h2><p class="mono wrap">${esc(id)}</p><p><a href="../shaders/${id}.spirv">Open SPIR-V</a> · ${n(s.pipeline_command_count)} inherited commands · ${variants.length} pipeline variants</p><div class="tabs shader-detail-tabs" role="tablist" aria-label="Shader details"><button id="shader-tab-pipelines" class="tab" role="tab" aria-controls="shader-panel-pipelines" onclick="setShaderDetailTab('pipelines')">Referencing Pipelines</button><button id="shader-tab-code" class="tab" role="tab" aria-controls="shader-panel-code" onclick="setShaderDetailTab('code')">Code</button></div><section id="shader-panel-code" role="tabpanel" aria-labelledby="shader-tab-code" class="hidden">${sourcePanel(id)}</section><section id="shader-panel-pipelines" role="tabpanel" aria-labelledby="shader-tab-pipelines"><div class="section"><div class="referencing-head"><h3>Referencing Pipelines</h3>${unusedButton(showUnusedShaderPipelines,'toggleUnusedShaderPipelines(!showUnusedShaderPipelines)')}</div><div id="shader-pipelines"></div></div></section>`;$('#detail').classList.remove('hidden');$('#detail').scrollTop=0;$('#detail .detail-nav button:not([disabled])').focus();setShaderDetailTab('pipelines');initSourcePanel(id);renderShaderPipelines();focusShaderRow(id);location.hash=`shader/${id}`}function closeDetail(){currentShader=null;if(detailOrigin?.isConnected)detailOrigin.focus();$('#detail').classList.add('hidden');history.replaceState(null,'',location.pathname+location.search)}window.openPipeline=openPipeline;window.openShader=openShader;window.closeDetail=closeDetail;
+const shaderSources=new Map();let sourceSelection=new Map();
+function sourcePanel(id){return `<div class="section"><h3>Shader Code</h3><p class="muted">Choose shader_sources once to match files to shaders automatically. After converting, return here to refresh code from that folder. GLSL/HLSL are reconstructed code. Loaded code stays in memory until this report is closed or refreshed.</p><div class="source-actions"><button onclick="copyConversionCommand()">Copy conversion command</button><button onclick="chooseSourceFolder()">Load source folder</button><button onclick="refreshSourceFolder(true)">Refresh code</button><button onclick="document.getElementById('source-files').click()">Load files</button></div><details><summary>Conversion command (${D.conversion_command?.startsWith('& ')?'PowerShell':'shell'})</summary><pre id="source-command" class="source-command"></pre><p class="muted">Default: GLSL + SPIR-V assembly. Add hlsl to --formats for HLSL; add --force to regenerate. Results: dump directory / shader_sources / . Tools: spirv-cross and spirv-dis on PATH, or specify --spirv-cross / --spirv-dis.</p></details><input id="source-folder" type="file" class="hidden" webkitdirectory multiple onchange="loadSourceFolderFiles(this)"><p id="source-folder-name" class="muted"></p><input id="source-files" type="file" class="hidden" accept=".glsl,.hlsl,.spvasm,.spvdis" multiple onchange="loadShaderSources(this)"><p id="source-status" role="status" aria-live="polite"></p><div id="source-view"></div></div>`}
+function showSourceStatus(message){const box=$('#source-status');if(box)box.textContent=message}
+async function copySourceText(text){try{await navigator.clipboard.writeText(text);showSourceStatus('Copied.')}catch{showSourceStatus('Clipboard unavailable. Select and copy the text manually.')}}
+function copyConversionCommand(){copySourceText($('#source-command').textContent)}
+function initSourcePanel(id){$('#source-command').textContent=`${D.conversion_command||'python shader_dump_report.py "<dump directory>"'} --convert-shader ${id} --formats glsl spvasm`;updateFolderName();renderSourceView();refreshSourceFolder()}
+function setShaderDetailTab(tab){
+ for(const name of ['pipelines','code']){
+  $('#shader-panel-'+name).classList.toggle('hidden',name!==tab);
+  $('#shader-tab-'+name).setAttribute('aria-selected',String(name===tab));
+  $('#shader-tab-'+name).classList.toggle('active',name===tab);
+ }
+}
+let sourceDirectory=null,sourceFolderLabel='',sourceFileIndex=new Map(),sourceRefresh=null;
+const sourceFilePattern=/^([a-f0-9]{40})(?:\.[a-z0-9_-]+)*\.(glsl|hlsl|spvasm|spvdis)$/i;
+function updateFolderName(){const box=$('#source-folder-name');if(box)box.textContent=sourceFolderLabel?`Folder: ${sourceFolderLabel}. Files are matched by SHA1. ${sourceDirectory?'Return from the terminal or use Refresh code to find new conversions.':'Select the folder again after new conversions (directory refresh is unavailable in this browser).'}`:'No source folder selected. Choose shader_sources; files will be matched by SHA1.'}
+async function chooseSourceFolder(){
+ if(!window.showDirectoryPicker){$('#source-folder').click();return}
+ try{
+  const directory=await window.showDirectoryPicker({id:'shader-sources',mode:'read'});
+  sourceDirectory=directory;sourceFolderLabel=directory.name;sourceFileIndex=new Map();shaderSources.clear();sourceSelection.clear();
+  updateFolderName();await refreshSourceFolder(true);
+ }catch(error){if(error.name!=='AbortError')showSourceStatus('Could not open folder: '+error.message+'. Use Load files instead.')}
+}
+function indexSourceFile(index,file){const match=file.name.match(sourceFilePattern);if(!match||!S.has(match[1].toLowerCase()))return;const id=match[1].toLowerCase();if(!index.has(id))index.set(id,[]);index.get(id).push(file)}
+async function loadSourceFolderFiles(input){
+ sourceDirectory=null;sourceFolderLabel=input.files[0]?.webkitRelativePath?.split('/')[0]||'Selected folder';
+ const index=new Map();for(const file of input.files)indexSourceFile(index,file);
+ sourceFileIndex=index;shaderSources.clear();sourceSelection.clear();input.value='';updateFolderName();
+ await loadIndexedSources();
+}
+async function loadIndexedSources(){
+ const id=currentShader;if(!id||!$('#source-view'))return;
+ const files=sourceFileIndex.get(id)||[];
+ await importSourceFiles(files);
+ if(currentShader===id&& !files.length)showSourceStatus('No converted code found for this shader. Run its conversion command, then refresh code.');
+}
+async function refreshSourceFolder(explicit=false){
+ if(!sourceDirectory){if(explicit){if(sourceFolderLabel)$('#source-folder').click();else await chooseSourceFolder()}else await loadIndexedSources();return}
+ try{
+  if(!sourceRefresh){const directory=sourceDirectory;sourceRefresh=(async()=>{const index=new Map();for await(const entry of directory.values()){if(entry.kind==='file'&&sourceFilePattern.test(entry.name))indexSourceFile(index,await entry.getFile())}if(directory===sourceDirectory)sourceFileIndex=index})().finally(()=>{sourceRefresh=null})}
+  await sourceRefresh;await loadIndexedSources();
+ }catch(error){showSourceStatus('Could not refresh source folder: '+error.message+'. Choose the folder again.')}
+}
+window.addEventListener('focus',()=>{if(currentShader&&sourceDirectory)refreshSourceFolder()});
+async function loadShaderSources(input){await importSourceFiles([...input.files]);input.value=''}
+async function importSourceFiles(files){
+ const id=currentShader;if(!id)return;
+ const sources=shaderSources.get(id)||new Map();let loaded=0,skipped=0;const errors=[];
+ for(const file of files){
+  const match=file.name.match(sourceFilePattern);
+  if(!match||match[1].toLowerCase()!==id){skipped++;continue}
+  if(file.size>10*1024*1024){errors.push(`${file.name}: exceeds 10 MiB`);continue}
+  const old=sources.get(file.name);
+  if(old&&old.size===file.size&&old.modified===file.lastModified){loaded++;continue}
+  try{const text=await file.text();sources.set(file.name,{name:file.name,format:match[2].toLowerCase(),text,size:file.size,modified:file.lastModified});if(!sourceSelection.has(id))sourceSelection.set(id,file.name);loaded++}catch(error){errors.push(`${file.name}: ${error.message}`)}
+ }
+ shaderSources.set(id,sources);
+ if(currentShader===id){renderSourceView();showSourceStatus([`${loaded} code file(s) available for this shader.`,skipped?`${skipped} file(s) skipped: filename SHA1 does not match.`:'',...errors].filter(Boolean).join(' '))}
+}
+function highlightSource(text,format){
+ const assembly=format==='spvasm'||format==='spvdis';
+ const keywords=new Set('if else for while do switch case default break continue return discard struct const static uniform buffer shared groupshared in out inout attribute varying layout precision highp mediump lowp readonly writeonly coherent volatile restrict flat smooth noperspective centroid sample invariant precise true false void typedef cbuffer tbuffer register packoffset namespace using row_major column_major nointerpolation'.split(' '));
+ const token=assembly?/;[^\n]*|"(?:\\.|[^"\\])*"|\bOp[A-Za-z0-9_]+\b|%[A-Za-z0-9_]+|[-+]?(?:0x[\da-fA-F]+|\d+(?:\.\d*)?(?:[eE][-+]?\d+)?)/g:/\/\*[\s\S]*?\*\/|\/\/[^\n]*|^[ \t]*#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:0x[\da-fA-F]+|(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)[uUlLfF]*\b|\b[A-Za-z_]\w*\b/gm;
+ let result='',offset=0;
+ for(const match of text.matchAll(token)){
+  const value=match[0];result+=esc(text.slice(offset,match.index));let kind='';
+  if(value.startsWith('//')||value.startsWith('/*')||(assembly&&value.startsWith(';')))kind='comment';
+  else if(value.startsWith('"')||value.startsWith("'"))kind='string';
+  else if(/^\s*#/.test(value))kind='preprocessor';
+  else if(assembly&&value.startsWith('Op'))kind='instruction';
+  else if(assembly&&value.startsWith('%'))kind='id';
+  else if(/^[+\-.\d]/.test(value))kind='number';
+  else if(keywords.has(value))kind='keyword';
+  else if(/^(?:(?:[biud]?vec|mat|dmat)\d(?:x\d)?|(?:bool|int|uint|float|double|half|min16float|min16int|min16uint)(?:[1-4](?:x[1-4])?)?|[iu]?sampler\w*|[iu]?image\w*|[RW]*Texture\w*|[RW]*StructuredBuffer|[RW]*ByteAddressBuffer|SamplerState|SamplerComparisonState)$/.test(value))kind='type';
+  result+=kind?value.split('\n').map(line=>`<span class="tok-${kind}">${esc(line)}</span>`).join('\n'):esc(value);offset=match.index+value.length;
+ }
+ return result+esc(text.slice(offset));
+}
+function selectSource(name){sourceSelection.set(currentShader,name);renderSourceView()}
+function renderSourceView(){const box=$('#source-view');if(!box)return;const sources=shaderSources.get(currentShader);if(!sources?.size){box.innerHTML='<p class="muted">No code loaded for this shader. Choose shader_sources once, then use Refresh code after conversion.</p>';return}const selected=sources.get(sourceSelection.get(currentShader))||sources.values().next().value;box.innerHTML='<div class="source-actions source-tabs" role="tablist" aria-label="Loaded shader code"></div><div class="source-actions"><input id="source-search" aria-label="Search code" placeholder="Search code"></div><pre class="source-code" tabindex="0" aria-label="Shader code"></pre>';for(const source of sources.values()){const button=document.createElement('button');button.textContent=source.format==='spvasm'||source.format==='spvdis'?'SPIR-V Assembly':source.format.toUpperCase();button.title=source.name;if([...sources.values()].filter(x=>x.format===source.format).length>1)button.textContent+=' · '+source.name.slice(41,-source.format.length-1);button.setAttribute('role','tab');button.setAttribute('aria-selected',String(source===selected));button.onclick=()=>selectSource(source.name);box.querySelector('.source-tabs').append(button)}const pre=box.querySelector('pre');const fragment=document.createDocumentFragment();const highlighted=highlightSource(selected.text,selected.format).split('\n');selected.text.split(/\r?\n/).forEach((line,index)=>{const span=document.createElement('span');span.className='source-line';span.dataset.line=index+1;span.innerHTML=highlighted[index]||'';fragment.append(span)});pre.append(fragment);$('#source-search').oninput=event=>{const query=event.target.value.toLowerCase();let first=null;for(const line of pre.children){const match=Boolean(query)&&line.textContent.toLowerCase().includes(query);line.classList.toggle('match',match);if(match&&!first)first=line}if(first)pre.scrollTop=first.offsetTop-pre.firstElementChild.offsetTop}}
 function helpLink(section,label){return `<button class="help-link" title="View explanation in Help" aria-label="Help: ${esc(label)}" onclick="openHelp('${section}')">ⓘ</button>`}
 function openHelp(section){if(!$('#detail').classList.contains('hidden'))closeDetail();setTab('help');const target=document.getElementById('help-'+section);if(target){target.scrollIntoView({block:'start'});target.focus({preventScroll:true})}}window.openHelp=openHelp;
 function infoValue(value){return value===null||value===undefined||value===''?'Unavailable':esc(typeof value==='object'?JSON.stringify(value,null,2):String(value))}
@@ -254,13 +343,190 @@ const kinds=[...new Set(D.pipelines.map(p=>p.kind))].sort(),activeKinds=new Set(
     path.write_text(document.replace('__DATA__', data), encoding='utf-8')
 
 
+def conversion_command(root):
+    """Shell-quoted prefix copied by the offline report (PowerShell on Windows)."""
+    parts = ['python', str(Path(__file__).resolve()), str(root.resolve())]
+    if os.name == 'nt':
+        return '& ' + ' '.join("'" + part.replace("'", "''") + "'" for part in parts)
+    return shlex.join(parts)
+
+
+def spirv_entries(source):
+    data = source.read_bytes()
+    if len(data) < 20 or len(data) % 4:
+        raise ValueError('Invalid SPIR-V length')
+    endian = '<' if data[:4] == b'\x03\x02\x23\x07' else '>'
+    words = struct.unpack(f'{endian}{len(data) // 4}I', data)
+    if words[0] != 0x07230203:
+        raise ValueError('Invalid SPIR-V magic')
+    stages = {0: 'vert', 1: 'tesc', 2: 'tese', 3: 'geom', 4: 'frag', 5: 'comp',
+              5267: 'task', 5268: 'mesh', 5364: 'task', 5365: 'mesh',
+              5313: 'rgen', 5314: 'rint', 5315: 'rahit', 5316: 'rchit', 5317: 'rmiss', 5318: 'rcall'}
+    entries, offset = [], 5
+    while offset < len(words):
+        count, opcode = words[offset] >> 16, words[offset] & 0xffff
+        if not count or offset + count > len(words):
+            raise ValueError('Invalid SPIR-V instruction length')
+        if opcode == 15:
+            if count < 4:
+                raise ValueError('Invalid OpEntryPoint')
+            name = data[(offset + 3) * 4:(offset + count) * 4].split(b'\0', 1)[0].decode('utf-8')
+            entries.append((stages.get(words[offset + 1]), name))
+        offset += count
+    return entries
+
+
+def convert_shader(root, shader_id, formats, force=False, cross='spirv-cross', dis='spirv-dis', source_path=None):
+    shader_id = sha(shader_id).lower()
+    if not re.fullmatch(r'[0-9a-f]{40}', shader_id):
+        raise ValueError('Shader SHA1 must contain 40 hexadecimal characters')
+    source = source_path or root / 'shaders' / f'{shader_id}.spirv'
+    if not source.exists():
+        source = source.with_suffix('.spv')
+    if not source.exists():
+        raise ValueError(f'SPIR-V not found: {source}')
+    entries = spirv_entries(source)
+    output = root / 'shader_sources'
+    output.mkdir(parents=True, exist_ok=True)
+    failures = []
+    for fmt in dict.fromkeys(formats):
+        variants = [(None, None)] if fmt == 'spvasm' else entries
+        if not variants:
+            failures.append(f'{fmt}: no entry points found')
+        for stage, entry in variants:
+            suffix = ''
+            if fmt != 'spvasm' and len(entries) > 1:
+                safe = re.sub(r'[^A-Za-z0-9_-]', '_', entry)[:64]
+                tag = hashlib.sha1(entry.encode()).hexdigest()[:8]
+                suffix = f'.{stage or "unknown"}.{safe}-{tag}'
+            target = output / f'{shader_id}{suffix}.{fmt}'
+            if target.exists() and not force:
+                print(f'Cached: {target}')
+                continue
+            tool = dis if fmt == 'spvasm' else cross
+            executable = shutil.which(tool)
+            if not executable:
+                failures.append(f'{fmt}: {tool} not found; add Vulkan SDK Bin to PATH or specify --spirv-cross / --spirv-dis')
+                continue
+            command = [executable, str(source)]
+            if fmt != 'spvasm':
+                if not stage:
+                    failures.append(f'{fmt}: unsupported execution model for {entry}')
+                    continue
+                command += ['--entry', entry, '--stage', stage]
+                command += ['--vulkan-semantics'] if fmt == 'glsl' else ['--hlsl', '--shader-model', '60']
+            try:
+                result = subprocess.run(command, capture_output=True, timeout=120)
+                if result.returncode or not result.stdout.strip():
+                    message = result.stderr.decode('utf-8', errors='replace').strip()
+                    failures.append(f'{target.name}: {message or "conversion produced no output"}')
+                    continue
+                target.write_bytes(result.stdout)
+                print(f'Wrote: {target}')
+            except (OSError, subprocess.TimeoutExpired) as error:
+                failures.append(f'{target.name}: {error}')
+    if failures:
+        raise ValueError('\n'.join(failures))
+
+
+def convert_shader_job(root, shader_id, formats, force, cross, dis, source):
+    """Return each process's log together so parallel progress stays readable."""
+    log = io.StringIO()
+    with redirect_stdout(log):
+        try:
+            convert_shader(root, shader_id, formats, force, cross, dis, source_path=source)
+        except (OSError, ValueError) as error:
+            return log.getvalue(), str(error)
+    return log.getvalue(), None
+
+
+def convert_all_shaders(root, formats, force=False, cross='spirv-cross', dis='spirv-dis', jobs=None):
+    """Convert a capture's shaders, or the binaries directly inside a folder."""
+    if jobs is not None and jobs < 1:
+        raise ValueError('--jobs must be at least 1')
+    jobs = jobs or (os.cpu_count() or 1)
+    source_dir = root / 'shaders' if (root / 'shaders').is_dir() else root
+    sources = sorted(path for path in source_dir.iterdir()
+                     if path.is_file() and path.suffix.lower() in ('.spv', '.spirv'))
+    if not sources:
+        raise ValueError(f'No .spv or .spirv files found in {source_dir}')
+    succeeded, failed, duplicates = 0, 0, 0
+    seen, tasks = set(), []
+    for source in sources:
+        try:
+            # Content hashes also support binaries with arbitrary filenames.
+            shader_id = hashlib.sha1(source.read_bytes()).hexdigest()
+            if shader_id in seen:
+                duplicates += 1
+                continue
+            seen.add(shader_id)
+            tasks.append((root, shader_id, formats, force, cross, dis, source))
+        except (OSError, ValueError) as error:
+            failed += 1
+            print(f'FAILED: {source.name}: {error}')
+    workers = min(jobs, len(tasks))
+    print(f'Converting {len(tasks)} unique shader(s) with {workers} worker process(es).', flush=True)
+
+    def finish(index, source, result):
+        nonlocal succeeded, failed
+        log, error = result
+        print(f'[{index}/{len(tasks)}] {source.name}', flush=True)
+        if log:
+            print(log, end='')
+        if error is not None:
+            failed += 1
+            print(f'FAILED: {source.name}: {error}', flush=True)
+        else:
+            succeeded += 1
+
+    if workers == 1:
+        for index, task in enumerate(tasks, 1):
+            finish(index, task[-1], convert_shader_job(*task))
+    elif workers > 1:
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(convert_shader_job, *task): task[-1] for task in tasks}
+            for index, future in enumerate(as_completed(futures), 1):
+                try:
+                    result = future.result()
+                except Exception as error:
+                    result = ('', f'Worker failed: {error}')
+                finish(index, futures[future], result)
+    print(f'Batch complete: {succeeded} succeeded (including cached), {failed} failed, '
+          f'{duplicates} duplicates skipped. Output: {root / "shader_sources"}')
+    return failed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('dump_root', type=Path)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--top', type=int, default=50, help='Deprecated; all report data is embedded.')
+    parser.add_argument('--convert-shader', metavar='SHA1_OR_*',
+                        help='Convert a shader SHA1, or "*" for all .spv/.spirv files in dump_root/shaders or directly in dump_root; do not regenerate the report')
+    parser.add_argument('--formats', nargs='+', choices=['glsl', 'hlsl', 'spvasm'], default=['glsl', 'spvasm'])
+    parser.add_argument('--force', action='store_true', help='Replace cached shader conversions')
+    parser.add_argument('--jobs', type=int, metavar='N',
+                        help='Parallel worker processes for --convert-shader "*" (default: CPU logical core count; 1 for serial)')
+    parser.add_argument('--spirv-cross', default='spirv-cross', help='SPIRV-Cross executable path')
+    parser.add_argument('--spirv-dis', default='spirv-dis', help='spirv-dis executable path')
     args = parser.parse_args()
+    if args.jobs is not None and args.jobs < 1:
+        parser.error('--jobs must be at least 1')
     root = args.dump_root
+    if args.convert_shader == '*':
+        try:
+            failed = convert_all_shaders(root, args.formats, args.force, args.spirv_cross, args.spirv_dis, args.jobs)
+        except (OSError, ValueError) as error:
+            parser.exit(1, f'Batch conversion failed: {error}\n')
+        if failed:
+            parser.exit(1, f'{failed} shader(s) failed; other conversion outputs were retained.\n')
+        return
+    if args.convert_shader:
+        try:
+            convert_shader(root, args.convert_shader, args.formats, args.force, args.spirv_cross, args.spirv_dis)
+        except (OSError, ValueError) as error:
+            parser.exit(1, f'Conversion failed: {error}\n')
+        return
     output = args.output or root
     try:
         shader_base = quote(Path(os.path.relpath(root / 'shaders', output)).as_posix(), safe='/')
@@ -369,7 +635,8 @@ def main():
                      'ALU instruction count 16bit', 'Complex instruction count', 'Texture read instruction count',
                      'Memory read instruction count', 'Memory write instruction count'])
     write_html(output / 'shader_usage_report.html', {'pipelines': rows, 'shaders': shaders, 'links': links, 'statistics': stats,
-                                       'shader_base': shader_base, 'capture_info': read_capture_info(root),
+                                       'shader_base': shader_base, 'conversion_command': conversion_command(root),
+                                       'capture_info': read_capture_info(root),
                                        'report_generation': {
                                            'generated_at': datetime.now().astimezone().isoformat(timespec='milliseconds'),
                                            'generator_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},

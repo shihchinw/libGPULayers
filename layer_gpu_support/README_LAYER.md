@@ -275,6 +275,74 @@ choose a separate report directory. The report is intended
 for devices supporting `VK_KHR_pipeline_executable_properties`; it retains the
 vendor-defined statistics and currently recognizes QCOM and Mali conventions.
 
+### Inspect shader code on demand
+
+Select a shader in the report, click **Copy conversion command**, and run the
+command in a terminal (PowerShell for reports generated on Windows). Only that
+shader is converted; the report is not regenerated. The default formats are
+reconstructed Vulkan GLSL and SPIR-V assembly:
+
+```sh
+python layer_gpu_support/scripts/shader_dump_report.py <capture-directory> --convert-shader <SHA1> --formats glsl spvasm
+```
+
+Add `hlsl` to `--formats` for reconstructed HLSL (shader model 6.0). Conversion
+requires `spirv-cross` and `spirv-dis` on PATH, for example from Vulkan SDK Bin.
+Use `--spirv-cross <executable>` and `--spirv-dis <executable>` to specify paths.
+Failures in one format do not prevent conversion of the remaining formats;
+unsupported shaders can still be inspected as SPIR-V assembly.
+
+Results are saved under `<capture-directory>/shader_sources/<SHA1>.glsl`,
+`.hlsl`, and `.spvasm`. Modules with multiple entry points get separate GLSL/HLSL
+files with stage and entry-point suffixes. Existing files are reused; `--force`
+regenerates them. Both `.spirv` and `.spv` binary inputs are accepted.
+
+For frequent code browsing, pass `"*"` instead of a SHA1 to convert all shaders
+once before returning to the report (quote `*` to prevent shell wildcard expansion):
+
+```sh
+python layer_gpu_support/scripts/shader_dump_report.py <capture-directory> --convert-shader "*" --formats glsl hlsl spvasm
+```
+
+Batch conversion uses multiple worker processes automatically, defaulting to the
+CPU logical core count (and no more workers than unique shaders). Each worker handles one shader at a time, with its requested formats
+converted in sequence. Use `--jobs 4` to set the worker count, or `--jobs 1` for
+serial conversion. At most one worker is assigned to each unique shader, so
+duplicate binaries do not write the same output concurrently. Completion logs
+are grouped per shader and progress is reported in completion order.
+
+`--convert-shader "*"` scans `<capture-directory>/shaders/`. Alternatively pass a folder
+containing `.spv` or `.spirv` files directly; its results go into that folder's
+`shader_sources/` directory. Scanning is not recursive. Outputs use the binary
+content SHA1 even when input filenames are arbitrary, and duplicate binaries are
+converted only once. Cached results are reused unless `--force` is supplied.
+Progress and a final summary are printed. Individual failures do not stop the
+batch; the command exits with a nonzero status if any shader failed. This mode
+does not regenerate HTML or convert files automatically during ordinary capture.
+In the report, select the resulting `shader_sources` folder once, then browse
+shaders normally; use **Refresh code** if the folder was already selected.
+
+Shader details open on **Referencing Pipelines**; switch to **Code** to inspect
+source without scrolling past long code listings to reach pipeline information.
+Click **Load source folder** and select `shader_sources` once. Files are indexed
+by SHA1 and only the selected shader's code is read. Switching shaders automatically
+loads their matching files, so there is no need to choose each `.glsl` individually.
+In browsers supporting directory handles, returning from the terminal or clicking
+**Refresh code** scans that folder for new conversions. Other browsers use a folder
+upload picker; select the folder again to discover new files. Access is read-only
+and files stay on the computer. Folder access and loaded code last only until the
+page is refreshed or closed. Select the folder again when reopening the report.
+
+**Load files** remains available for individual files and rejects filename SHA1s
+that do not match the selected shader. The viewer provides language tabs, line
+numbers, search highlighting, and offline syntax coloring for GLSL, HLSL,
+and SPIR-V assembly. `.spvdis` is also accepted as an assembly filename. Files
+larger than 10 MiB are rejected. Source text is HTML-escaped before highlighting;
+it is never executed. No network or local server is required.
+
+GLSL/HLSL are reconstructed from the captured module, not the original developer
+source. Pipeline specialization constants are not applied by this conversion.
+
 ## Framebuffers
 
 The framebuffer overrides allow some control over how the framebuffers are
