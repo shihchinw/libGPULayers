@@ -119,6 +119,12 @@ To regenerate the report manually:
 python layer_gpu_support/scripts/shader_dump_report.py <capture-directory>
 ```
 
+Capture environment collection reads installed version metadata with
+`dumpsys package <package>`, without pulling APK files. `--capture-apk-hash`
+optionally pulls all installed base/split APKs to compute hashes, which can delay
+startup for large applications. The installer prints metadata collection elapsed
+time and identifies APK transfers when requested.
+
 ### Multi-layer installation
 
 The script is able to install multiple layers in a stack. Specify the

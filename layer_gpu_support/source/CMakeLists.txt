@@ -56,6 +56,11 @@ add_library(
         layer_device_functions_trace_rays.cpp
         layer_device_functions_transfer.cpp)
 
+# entry.cpp discovers this optional header with __has_include. Explicitly track
+# it so existing build trees also rebuild entry.cpp when the header is added.
+set_property(SOURCE ../../source_common/framework/entry.cpp APPEND PROPERTY
+    OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/layer_instance_functions.hpp")
+
 target_include_directories(
     ${VK_LAYER} PRIVATE
         ./

@@ -140,6 +140,8 @@ Device::Device(Instance* _instance,
                                                   instance->config.shader_dump_frame_start(),
                                                   instance->config.shader_dump_frame_count(),
                                                   instance->config.shader_dump_detailed(), commsWrapper.get());
+        shaderDump->recordDeviceInfo(physicalDevice, instance->driver, instance->applicationApiVersion,
+                                     pipelineExecutableInfoEnabled);
     }
 
     VkSemaphoreTypeCreateInfo timelineCreateInfo {

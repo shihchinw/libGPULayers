@@ -134,6 +134,7 @@ from typing import Optional
 from lglpy.android.adb import ADBConnect
 from lglpy.android.utils import AndroidUtils, NamedTempFile
 from lglpy.android.filesystem import AndroidFilesystem
+from lglpy.android.capture import collect_capture_info, save_capture_info, timestamp
 from lglpy.comms import server
 from lglpy.ui import console
 
@@ -608,7 +609,9 @@ def summarize_shader_dump(host_path: str) -> None:
         frames = count_files('frames', '.json')
         if frames:
             return frames
-        usage_table = os.path.join(dump_root, 'usage_by_label.csv')
+        usage_table = os.path.join(dump_root, 'frame_pipeline_usage.csv')
+        if not os.path.isfile(usage_table):
+            usage_table = os.path.join(dump_root, 'usage_by_label.csv')
         if not os.path.isfile(usage_table):
             return 0
         try:
@@ -1085,6 +1088,12 @@ def parse_cli() -> Optional[argparse.Namespace]:
         '--pull-artifact', type=str, default=None,
         help='pull capture artifacts to this host directory')
 
+    for field in ('scene', 'quality', 'resolution', 'note'):
+        parser.add_argument(f'--capture-{field}', default=None,
+                            help=f'optional {field} recorded in capture Info')
+    parser.add_argument('--capture-apk-hash', action='store_true',
+                        help='record SHA-256 of installed base and split APKs (requires pulling them)')
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -1176,6 +1185,14 @@ def main() -> int:
         if not artifact_configured:
             return 6
 
+    capture_info = None
+    if artifact_host_path:
+        print('Collecting capture environment and package metadata ...', flush=True)
+        metadata_started = time.monotonic()
+        capture_info = collect_capture_info(conn, layers, args, activity, need_32bit)
+        save_capture_info(artifact_host_path, capture_info)
+        print(f'Capture metadata collected in {time.monotonic() - metadata_started:.1f}s.', flush=True)
+
     # Install files
     for layer in layers:
         if not install_layer_binary(conn, layer):
@@ -1221,6 +1238,10 @@ def main() -> int:
         shader_dump_progress.start()
 
     interrupted = False
+    capture_started = time.monotonic()
+    if capture_info:
+        capture_info['capture'].update(started_at=timestamp(), status='running')
+        save_capture_info(artifact_host_path, capture_info)
     try:
         # Restart the package if requested
         if args.auto_start:
@@ -1250,6 +1271,12 @@ def main() -> int:
     if shader_dump_progress:
         shader_dump_progress.stop()
 
+    if capture_info:
+        capture_info['capture'].update(
+            ended_at=timestamp(), elapsed_seconds=round(time.monotonic() - capture_started, 3),
+            status='interrupted' if interrupted else 'completed')
+        save_capture_info(artifact_host_path, capture_info)
+
     artifact_pull_failed = False
     should_pull = bool(artifact_host_path)
     if interrupted and artifact_host_path:
@@ -1258,8 +1285,14 @@ def main() -> int:
             print(f'Artifacts remain on the device: {device_artifact_dir}')
     if should_pull:
         artifact_pull_failed = not pull_artifacts(conn, artifact_host_path, device_artifact_dir)
+        if capture_info:
+            capture_info['capture']['artifact_status'] = 'pull_failed' if artifact_pull_failed else 'pulled'
+            save_capture_info(artifact_host_path, capture_info)
         if not artifact_pull_failed and artifact_layer:
             generate_shader_dump_report(artifact_layer, artifact_host_path)
+    elif capture_info:
+        capture_info['capture']['artifact_status'] = 'pull_skipped'
+        save_capture_info(artifact_host_path, capture_info)
 
     # Disable Perfetto trace
     if args.timeline_perfetto and perfetto_conf:

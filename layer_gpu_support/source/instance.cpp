@@ -24,6 +24,8 @@
  */
 
 #include "instance.hpp"
+#include "framework/instance_functions.hpp"
+#include "layer_instance_functions.hpp"
 
 #include "framework/utils.hpp"
 
@@ -89,4 +91,20 @@ Instance::Instance(VkInstance _instance, PFN_vkGetInstanceProcAddr _nlayerGetPro
       nlayerGetProcAddress(_nlayerGetProcAddress)
 {
     initDriverInstanceDispatchTable(instance, nlayerGetProcAddress, driver);
+}
+
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateInstance<user_tag>(
+    const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
+{
+    const auto result = layer_vkCreateInstance<default_tag>(pCreateInfo, pAllocator, pInstance);
+    if (result == VK_SUCCESS)
+    {
+        extern std::mutex g_vulkanLock;
+        std::lock_guard<std::mutex> lock {g_vulkanLock};
+        auto* layer = Instance::retrieve(*pInstance);
+        if (pCreateInfo->pApplicationInfo && pCreateInfo->pApplicationInfo->apiVersion)
+            layer->applicationApiVersion = pCreateInfo->pApplicationInfo->apiVersion;
+    }
+    return result;
 }

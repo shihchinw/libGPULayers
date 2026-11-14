@@ -76,6 +76,7 @@ class CaptureLayoutTests(unittest.TestCase):
                 self.assertEqual(data['shaders'][0]['label_groups'], ['Pass'])
                 self.assertNotIn('rank', data['pipelines'][0])
                 self.assertNotIn('rank', data['shaders'][0])
+                self.assertEqual(data['capture_info']['vulkan_devices'], [])
                 for filename in ('pipeline_summary.csv', 'shader_summary.csv'):
                     with (output / filename).open(newline='', encoding='utf-8') as handle:
                         self.assertNotIn('rank', csv.DictReader(handle).fieldnames)
@@ -84,6 +85,33 @@ class CaptureLayoutTests(unittest.TestCase):
                 self.assertIn('${D.shader_base}/', html)
                 self.assertTrue((output / 'shader_summary.csv').is_file())
                 self.assertFalse((root / 'summary').exists())
+
+    def test_vulkan_metadata_preserves_raw_strings_and_skips_corrupt_files(self):
+        spec = importlib.util.spec_from_file_location(
+            'shader_dump_report', 'layer_gpu_support/scripts/shader_dump_report.py')
+        report = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(report)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metadata = root / 'metadata'
+            metadata.mkdir()
+            device = {'schema_version': 1, 'device_name': 'Mali test',
+                      'driver_info': 'r54p1-<build>\n</script>',
+                      'driver_version_raw': 4294967295, 'driver_name': None}
+            for name in ('vulkan-1.json', 'vulkan-2.json'):
+                (metadata / name).write_text(json.dumps(device), encoding='utf-8')
+            (metadata / 'vulkan-3.json').write_text('{partial', encoding='utf-8')
+            info = report.read_capture_info(root)
+            self.assertEqual(info['vulkan_devices'], [device])
+            self.assertEqual(len(info['warnings']), 1)
+            with patch('sys.argv', ['report', str(root)]):
+                report.main()
+            html = (root / 'shader_usage_report.html').read_text(encoding='utf-8')
+            data = json.loads(re.search(
+                r'<script[^>]*id="report-data"[^>]*>(.*?)</script>', html, re.S).group(1))
+            self.assertEqual(data['capture_info'], info)
+            self.assertNotIn('</script>', re.search(
+                r'<script[^>]*id="report-data"[^>]*>(.*?)</script>', html, re.S).group(1))
 
 
 class InterruptedCaptureTests(unittest.TestCase):
@@ -111,6 +139,8 @@ class InterruptedCaptureTests(unittest.TestCase):
             'ShaderDumpProgressReporter': MagicMock(),
             'pull_artifacts': MagicMock(return_value=pull_ok),
             'generate_shader_dump_report': MagicMock(),
+            'collect_capture_info': MagicMock(return_value={'capture': {}}),
+            'save_capture_info': MagicMock(),
             'disable_layers': MagicMock(return_value=True),
             'uninstall_layer_binary': MagicMock(return_value=True),
             'uninstall_layer_config': MagicMock(return_value=True),
@@ -138,6 +168,9 @@ class InterruptedCaptureTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(mocks['pull_artifacts'].call_args.args[1], host_path)
         mocks['generate_shader_dump_report'].assert_called_once()
+        snapshot = mocks['save_capture_info'].call_args.args[1]
+        self.assertEqual(snapshot['capture']['status'], 'interrupted')
+        self.assertEqual(snapshot['capture']['artifact_status'], 'pulled')
 
     def test_interrupt_skip_preserves_cleanup(self):
         for answer in ('n', '', EOFError, KeyboardInterrupt):
@@ -146,6 +179,8 @@ class InterruptedCaptureTests(unittest.TestCase):
                 self.assertEqual(result, 0)
                 mocks['pull_artifacts'].assert_not_called()
                 mocks['generate_shader_dump_report'].assert_not_called()
+                snapshot = mocks['save_capture_info'].call_args.args[1]
+                self.assertEqual(snapshot['capture']['artifact_status'], 'pull_skipped')
 
     def test_timed_capture_interrupt_prompts_and_accepts_yes(self):
         result, mocks, prompt, _ = self.run_capture([' YES '], timed=True)
@@ -162,12 +197,16 @@ class InterruptedCaptureTests(unittest.TestCase):
         result, mocks, _, _ = self.run_capture([KeyboardInterrupt, 'y'], pull_ok=False)
         self.assertEqual(result, 13)
         mocks['generate_shader_dump_report'].assert_not_called()
+        snapshot = mocks['save_capture_info'].call_args.args[1]
+        self.assertEqual(snapshot['capture']['artifact_status'], 'pull_failed')
 
     def test_normal_enter_pulls_without_confirmation(self):
         result, mocks, prompt, _ = self.run_capture([''])
         self.assertEqual(result, 0)
         prompt.assert_called_once()
         mocks['pull_artifacts'].assert_called_once()
+        snapshot = mocks['save_capture_info'].call_args.args[1]
+        self.assertEqual(snapshot['capture']['status'], 'completed')
 
     def test_interrupt_without_artifacts_cleans_up_without_prompt(self):
         result, mocks, prompt, _ = self.run_capture([KeyboardInterrupt], artifacts=False)

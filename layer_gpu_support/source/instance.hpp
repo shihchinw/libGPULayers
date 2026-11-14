@@ -121,6 +121,8 @@ public:
      */
     VkInstance instance;
 
+    uint32_t applicationApiVersion {VK_API_VERSION_1_0};
+
     /**
      * @brief The next layer's @c vkGetInstanceProcAddr() function pointer.
      */

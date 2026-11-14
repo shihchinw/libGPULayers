@@ -7,6 +7,7 @@
 #include "shader_dump.hpp"
 
 #include "framework/device_dispatch_table.hpp"
+#include "framework/instance_dispatch_table.hpp"
 #include "framework/utils.hpp"
 #include "layer_comms.hpp"
 
@@ -180,6 +181,76 @@ ShaderDump::~ShaderDump()
 }
 
 bool ShaderDump::enabled() const { return active; }
+
+void ShaderDump::recordDeviceInfo(VkPhysicalDevice physicalDevice, const InstanceDispatchTable& driver,
+                                 uint32_t applicationApiVersion, bool executableInfoEnabled)
+{
+    if (!active) return;
+
+    VkPhysicalDeviceProperties properties {};
+    driver.vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+    bool driverPropertiesSupported = properties.apiVersion >= VK_API_VERSION_1_2;
+    if (!driverPropertiesSupported)
+    {
+        uint32_t count = 0;
+        if (driver.vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, nullptr) == VK_SUCCESS)
+        {
+            std::vector<VkExtensionProperties> extensions(count);
+            if (driver.vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, extensions.data()) == VK_SUCCESS)
+            {
+                for (const auto& extension : extensions)
+                    driverPropertiesSupported |= std::strcmp(extension.extensionName, VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME) == 0;
+            }
+        }
+    }
+
+    VkPhysicalDeviceDriverProperties driverProperties = vku::InitStructHelper();
+    auto getProperties2 = driver.vkGetPhysicalDeviceProperties2;
+    if (!getProperties2) getProperties2 = driver.vkGetPhysicalDeviceProperties2KHR;
+    const bool queried = driverPropertiesSupported && getProperties2;
+    if (queried)
+    {
+        VkPhysicalDeviceProperties2 query = vku::InitStructHelper(&driverProperties);
+        getProperties2(physicalDevice, &query);
+    }
+
+    auto hex = [](uint32_t value) {
+        std::ostringstream text;
+        text << "0x" << std::hex << std::setfill('0') << std::setw(8) << value;
+        return text.str();
+    };
+    std::ostringstream uuid;
+    for (auto byte : properties.pipelineCacheUUID)
+        uuid << std::hex << std::setfill('0') << std::setw(2) << static_cast<unsigned>(byte);
+    json info {{"schema_version", 1}, {"source", "capture Vulkan physical device"},
+               {"application_api_version", std::to_string(VK_API_VERSION_MAJOR(applicationApiVersion)) + "." +
+                                           std::to_string(VK_API_VERSION_MINOR(applicationApiVersion)) + "." +
+                                           std::to_string(VK_API_VERSION_PATCH(applicationApiVersion))},
+               {"pipeline_executable_info_enabled", executableInfoEnabled},
+               {"device_name", properties.deviceName}, {"vendor_id", hex(properties.vendorID)},
+               {"device_id", hex(properties.deviceID)}, {"api_version_raw", properties.apiVersion},
+               {"api_version", std::to_string(VK_API_VERSION_MAJOR(properties.apiVersion)) + "." +
+                               std::to_string(VK_API_VERSION_MINOR(properties.apiVersion)) + "." +
+                               std::to_string(VK_API_VERSION_PATCH(properties.apiVersion))},
+               {"driver_version_raw", properties.driverVersion}, {"driver_version_hex", hex(properties.driverVersion)},
+               {"pipeline_cache_uuid", uuid.str()}, {"driver_properties_available", queried},
+               {"driver_name", queried ? json(driverProperties.driverName) : json(nullptr)},
+               {"driver_info", queried ? json(driverProperties.driverInfo) : json(nullptr)},
+               {"driver_id", queried ? json(driverProperties.driverID) : json(nullptr)}};
+    if (!queried)
+        info["unavailable_reason"] = driverPropertiesSupported ? "Physical device properties2 query unavailable" :
+                                                            "Vulkan 1.2 / VK_KHR_driver_properties unavailable";
+
+    std::lock_guard<std::mutex> guard(lock);
+    auto directory = std::filesystem::path(outputPath) / "metadata";
+    std::error_code error;
+    std::filesystem::create_directories(directory, error);
+    // Separate files retain information for different physical devices.
+    auto path = directory / ("vulkan-" + std::to_string(reinterpret_cast<uintptr_t>(physicalDevice)) + ".json");
+    std::ofstream stream(path);
+    stream << info.dump(2) << '\n';
+    if (error || !stream) LAYER_ERR("Failed to write Vulkan capture metadata: %s", path.string().c_str());
+}
 
 void ShaderDump::recordShaderModule(VkShaderModule shaderModule,
                                     const uint32_t* code,
@@ -479,7 +550,7 @@ void ShaderDump::endFrame()
         report = {{"schema_version", 1}, {"frame", frameNumber}, {"usage", json::array()}};
         file.open(frameFile);
     }
-    const std::filesystem::path table = std::filesystem::path(outputPath) / "tables" / "usage_by_label.csv";
+    const std::filesystem::path table = std::filesystem::path(outputPath) / "tables" / "frame_pipeline_usage.csv";
     const bool newTable = !std::filesystem::exists(table);
     std::ofstream csvFile(table, std::ios::app);
     if (newTable) csvFile << "frame,pipeline_signature,label_path,draw_count,dispatch_count,trace_rays_count\n";

@@ -16,6 +16,7 @@
 #include <vulkan/vulkan.h>
 
 struct DeviceDispatchTable;
+struct InstanceDispatchTable;
 class ShaderDumpComms;
 
 /**
@@ -32,6 +33,9 @@ public:
     ~ShaderDump();
 
     bool enabled() const;
+
+    void recordDeviceInfo(VkPhysicalDevice physicalDevice, const InstanceDispatchTable& driver,
+                          uint32_t applicationApiVersion, bool executableInfoEnabled);
 
     void recordShaderModule(VkShaderModule shaderModule,
                             const uint32_t* code,

@@ -191,8 +191,8 @@ capture finishes.
 
 `mode` controls output size. `compact` is the default and retains the three report
 inputs: `shaders/<SHA1>.spirv`, `pipelines/*.json`, and
-`tables/usage_by_label.csv` on the device. On the host, the installer places
-`usage_by_label.csv` and other raw CSV files directly in the capture directory,
+`tables/frame_pipeline_usage.csv` on the device. On the host, the installer places
+`frame_pipeline_usage.csv` and other raw CSV files directly in the capture directory,
 alongside the report and its CSV exports, omitting `shader-dump/`, `tables/`,
 and `summary/` wrappers. This is sufficient for SHA1 lookup, SPIR-V source
 conversion, pipeline executable analysis, CPU-side hotness, and debug label
@@ -219,6 +219,31 @@ buttons match any selected tag; Clear Tags resets only those selections.
 The list-plus icon includes unused entries. Shader Type buttons filter stages.
 Switching tabs preserves search, filters, and sort settings.
 
+The Info tab beside Help focuses on device manufacturer/product, Android/SDK
+and build fingerprint, package identity/version, GPU/driver identity and Vulkan
+API versions, plus shader-related capture settings. Duplicate driver names are
+omitted, and full configuration is collapsed. Session details, frame ranges,
+tool identifiers and optional notes remain in metadata and Copy JSON.
+`capture_info.json` stores the host snapshot, while `metadata/vulkan-*.json`
+stores properties queried from the application's physical devices. Offline
+regeneration uses these saved inputs without querying a connected device.
+
+Package `versionName` and `versionCode` are read using
+`dumpsys package <package>`, with Package Manager recorded as the source.
+Version collection does not transfer APK files or require aapt2. Missing SoC,
+driver or package fields do not prevent capture. Driver versions retain their
+raw decimal/hex values; vendor-defined strings are preserved verbatim.
+
+With `--pull-artifact`, optional installer flags `--capture-scene`,
+`--capture-quality`, `--capture-resolution` and `--capture-note` record supplied
+text in Info. `--capture-apk-hash` additionally pulls and hashes all installed
+base/split APKs. Hashes are omitted by default to avoid the transfer cost;
+enabling hashes does not change the source of version information.
+Session times use the host clock with a UTC offset and include app launch/stop.
+Completed denotes a normally ended session, not full coverage of all frames.
+Recorded usage frame counts include only frame IDs present in usage CSV data;
+the requested frame window is saved separately in the effective configuration.
+
 The Shaders toolbar hides zero-inherited-command shaders by default. Enable
 Show Unused Shaders to include them. Zero means no commands were recorded
 for their referencing pipelines in this capture, not permanent non-use.
@@ -228,12 +253,12 @@ inherited commands count each referencing pipeline once.
 Report summaries are `pipeline_summary.csv` and `shader_summary.csv`, without
 rank columns, plus `pipeline_shader_links.csv` and `pipeline_statistics.csv`.
 `pipeline_signature` is a SHA1 of pipeline kind and shader stage/entry-point
-identities, not full pipeline state. The original `usage_by_label.csv` filename
-is retained.
+identities, not full pipeline state. New captures use `frame_pipeline_usage.csv`; the report also accepts the legacy
+`usage_by_label.csv` filename, preferring the new file if both exist.
 
 Pipeline JSON preserves vendor-defined statistic names and values; tools must
 not assume that a statistic called "registers" or "spills" is available on
-every driver. With `frame_summary`, `usage_by_label.csv` contains one aggregate
+every driver. With `frame_summary`, `frame_pipeline_usage.csv` contains one aggregate
 record per `(frame, pipeline signature, debug label path)`. Counts are commands
 recorded by the CPU, not GPU execution time. `VK_EXT_debug_utils` command buffer
 label scopes are captured when the application uses that extension.
@@ -244,7 +269,7 @@ Generate an offline report with:
 python layer_gpu_support/scripts/shader_dump_report.py <shader-dump-directory>
 ```
 
-This reads `pipelines/` and `usage_by_label.csv` directly from the capture
+This reads `pipelines/` and `frame_pipeline_usage.csv` directly from the capture
 directory and writes `shader_usage_report.html` and CSV exports there. Use `--output` to
 choose a separate report directory. The report is intended
 for devices supporting `VK_KHR_pipeline_executable_properties`; it retains the
