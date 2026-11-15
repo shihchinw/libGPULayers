@@ -73,6 +73,39 @@ static void testDeferredOwnershipAndCompletion()
     require(records == 1, "failed operation consumed outputs");
 }
 
+template<typename Info, typename SafeInfo>
+static void testStatisticsFlagsForType(VkStructureType type)
+{
+    Info source {};
+    source.sType = type;
+    PipelineCaptureInfos<Info, SafeInfo> legacy(1, &source, true);
+    require(hasCaptureStatistics(legacy.infos[0]), "legacy capture bit not set");
+    require(source.flags == 0, "application legacy flags were modified");
+    VkPipelineCreateFlags2CreateInfoKHR flags2 {};
+    flags2.sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR;
+    VkPipelineCreationFeedbackCreateInfo feedback {};
+    feedback.sType = VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO;
+    feedback.pNext = &flags2;
+    VkPipelineCreationFeedback output {}, stageOutput {};
+    feedback.pPipelineCreationFeedback = &output;
+    feedback.pipelineStageCreationFeedbackCount = 1;
+    feedback.pPipelineStageCreationFeedbacks = &stageOutput;
+    source.pNext = &feedback;
+    source.flags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+    require(!hasCaptureStatistics(source), "flags2 did not override legacy flags");
+    PipelineCaptureInfos<Info, SafeInfo> patched(1, &source, true);
+    require(hasCaptureStatistics(patched.infos[0]), "nested flags2 capture bit not set");
+    require(flags2.flags == 0, "application pNext chain was modified");
+    auto* driverFeedback = vku::FindStructInPNextChain<VkPipelineCreationFeedbackCreateInfo>(
+        const_cast<void*>(patched.infos[0].pNext));
+    driverFeedback->pPipelineCreationFeedback->duration = 123;
+    driverFeedback->pPipelineStageCreationFeedbacks[0].duration = 456;
+    patched.copyFeedback();
+    require(output.duration == 123 && stageOutput.duration == 456, "driver feedback did not reach the application");
+    PipelineCaptureInfos<Info, SafeInfo> disabled(1, &source, false);
+    require(!hasCaptureStatistics(disabled.infos[0]), "disabled capture injected a bit");
+}
+
 
 static void testDrawHooks()
 {
@@ -279,6 +312,9 @@ int main()
 {
     try {
         testDeferredOwnershipAndCompletion();
+        testStatisticsFlagsForType<VkComputePipelineCreateInfo, vku::safe_VkComputePipelineCreateInfo>(VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO);
+        testStatisticsFlagsForType<VkGraphicsPipelineCreateInfo, vku::safe_VkGraphicsPipelineCreateInfo>(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
+        testStatisticsFlagsForType<VkRayTracingPipelineCreateInfoKHR, vku::safe_VkRayTracingPipelineCreateInfoKHR>(VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR);
         testDrawHooks();
         testAtomicOutputAndFailure();
         std::cout << "PASS deferred ownership, pending/error paths, concurrent exactly-once completion\n";

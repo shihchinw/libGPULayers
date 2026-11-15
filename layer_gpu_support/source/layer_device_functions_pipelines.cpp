@@ -50,7 +50,7 @@ void captureDeferredPipelines(Device& layer, VkDeferredOperationKHR operation)
         for (size_t i = 0; i < infos.size(); ++i)
             if (pipelines[i] != VK_NULL_HANDLE)
                 layer.shaderDump->recordRayTracingPipeline(layer.device, layer.driver, pipelines[i], infos[i],
-                                                          layer.pipelineExecutableInfoEnabled);
+                                                          pending->statisticsRequested && layer.pipelineExecutableInfoEnabled && hasCaptureStatistics(infos[i]));
     });
 }
 }
@@ -375,16 +375,17 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateComputePipelines<user_tag>(VkDevice
         pipelineCache = VK_NULL_HANDLE;
     }
 
-    std::vector<VkComputePipelineCreateInfo> createInfos(pCreateInfos, pCreateInfos + createInfoCount);
-    if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
-    {
-        for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-    }
+    const bool captureStatistics = layer->shaderDump && layer->shaderDump->enabled() &&
+        layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics();
+    PipelineCaptureInfos<VkComputePipelineCreateInfo, vku::safe_VkComputePipelineCreateInfo>
+        captureInfos(createInfoCount, pCreateInfos, captureStatistics);
+    const auto& createInfos = captureInfos.infos;
 
     // Release the lock to call into the driver
     lock.unlock();
     const VkResult result = layer->driver
         .vkCreateComputePipelines(device, pipelineCache, createInfoCount, createInfos.data(), pAllocator, pPipelines);
+    captureInfos.copyFeedback();
     if ((result == VK_SUCCESS || result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
     {
         for (uint32_t i = 0; i < createInfoCount; ++i)
@@ -392,7 +393,7 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateComputePipelines<user_tag>(VkDevice
             if (pPipelines[i] != VK_NULL_HANDLE)
             {
                 layer->shaderDump->recordComputePipeline(device, layer->driver, pPipelines[i], createInfos[i],
-                                                         layer->pipelineExecutableInfoEnabled);
+                                                         captureStatistics && hasCaptureStatistics(createInfos[i]));
             }
         }
     }
@@ -420,16 +421,17 @@ VKAPI_ATTR VkResult VKAPI_CALL
         pipelineCache = VK_NULL_HANDLE;
     }
 
-    std::vector<VkGraphicsPipelineCreateInfo> createInfos(pCreateInfos, pCreateInfos + createInfoCount);
-    if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
-    {
-        for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-    }
+    const bool captureStatistics = layer->shaderDump && layer->shaderDump->enabled() &&
+        layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics();
+    PipelineCaptureInfos<VkGraphicsPipelineCreateInfo, vku::safe_VkGraphicsPipelineCreateInfo>
+        captureInfos(createInfoCount, pCreateInfos, captureStatistics);
+    const auto& createInfos = captureInfos.infos;
 
     // Release the lock to call into the driver
     lock.unlock();
     const VkResult result = layer->driver
         .vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, createInfos.data(), pAllocator, pPipelines);
+    captureInfos.copyFeedback();
     if ((result == VK_SUCCESS || result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
     {
         for (uint32_t i = 0; i < createInfoCount; ++i)
@@ -437,7 +439,7 @@ VKAPI_ATTR VkResult VKAPI_CALL
             if (pPipelines[i] != VK_NULL_HANDLE)
             {
                 layer->shaderDump->recordGraphicsPipeline(device, layer->driver, pPipelines[i], createInfos[i],
-                                                          layer->pipelineExecutableInfoEnabled);
+                                                          captureStatistics && hasCaptureStatistics(createInfos[i]));
             }
         }
     }
@@ -467,16 +469,14 @@ VKAPI_ATTR VkResult VKAPI_CALL
     }
 
     // A requested deferral may outlive this call, including all modified inputs.
+    const bool captureStatistics = layer->shaderDump && layer->shaderDump->enabled() &&
+        layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics();
     std::shared_ptr<DeferredRayTracingPipelines> pending;
     if (deferredOperation != VK_NULL_HANDLE)
-        pending = std::make_shared<DeferredRayTracingPipelines>(createInfoCount, pCreateInfos, pPipelines);
-    std::vector<VkRayTracingPipelineCreateInfoKHR> immediateInfos;
-    if (!pending) immediateInfos.assign(pCreateInfos, pCreateInfos + createInfoCount);
-    auto& createInfos = pending ? pending->infos : immediateInfos;
-    if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
-    {
-        for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-    }
+        pending = std::make_shared<DeferredRayTracingPipelines>(createInfoCount, pCreateInfos, pPipelines, captureStatistics);
+    PipelineCaptureInfos<VkRayTracingPipelineCreateInfoKHR, vku::safe_VkRayTracingPipelineCreateInfoKHR>
+        immediateInfos(pending ? 0 : createInfoCount, pCreateInfos, captureStatistics);
+    const auto& createInfos = pending ? pending->infos : immediateInfos.infos;
 
     // Release the lock to call into the driver
     lock.unlock();
@@ -487,6 +487,11 @@ VKAPI_ATTR VkResult VKAPI_CALL
                                                                           createInfos.data(),
                                                                           pAllocator,
                                                                           pPipelines);
+    if (result != VK_OPERATION_DEFERRED_KHR)
+    {
+        if (pending) pending->copyFeedback();
+        else immediateInfos.copyFeedback();
+    }
     if (result == VK_OPERATION_DEFERRED_KHR && pending)
     {
         std::lock_guard<std::mutex> guard(layer->deferredPipelineLock);
@@ -500,7 +505,7 @@ VKAPI_ATTR VkResult VKAPI_CALL
             if (pPipelines[i] != VK_NULL_HANDLE)
             {
                 layer->shaderDump->recordRayTracingPipeline(device, layer->driver, pPipelines[i], createInfos[i],
-                                                            layer->pipelineExecutableInfoEnabled);
+                                                            captureStatistics && hasCaptureStatistics(createInfos[i]));
             }
         }
     }

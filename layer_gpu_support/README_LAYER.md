@@ -215,6 +215,10 @@ Escape closes detail panels.
 
 The Help tab explains data scope, capture-relative flags, sorting, and fields.
 Pipeline rows group identical shader combinations, not complete pipeline state.
+Statistics capture patches owned creation flags, respecting flags2 precedence,
+and queries statistics only when capture is requested, the device feature is
+enabled, and the effective pipeline flags permit capture. Application pNext data
+is not modified; pipeline creation feedback is returned to application storage.
 Draw counts are CPU API call counts, including indirect, indirect-count, EXT mesh,
 and EXT multi-draw commands supported by the framework. Each call counts once,
 regardless of drawCount/maxDrawCount. `indirect_draw_command_count` is a subset of
