@@ -13,6 +13,31 @@ from lglpy.android import capture
 
 
 class CaptureMetadataTests(unittest.TestCase):
+    def test_pipeline_instances_keep_distinct_executable_statistics(self):
+        spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
+        report = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(report)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'pipelines').mkdir()
+            for instance, registers in [(1, 5), (2, 28)]:
+                data = {'pipeline_signature': 'sha1:abc', 'pipeline_instance_id': instance,
+                        'kind': 'compute', 'executables': [{'index': 0, 'statistics': [
+                            {'name': 'Registers used', 'value': registers}]}]}
+                (root / 'pipelines' / f'abc-{instance}.json').write_text(json.dumps(data))
+            group = report.read_pipelines(root)['abc']
+            self.assertEqual(len(group['instances']), 2)
+            self.assertEqual([e['index'] for e in group['executables']], [0, 0])
+            self.assertEqual(len({e['key'] for e in group['executables']}), 2)
+            with patch('sys.argv', ['report', str(root)]):
+                report.main()
+            import re
+            html = (root / 'shader_usage_report.html').read_text(encoding='utf-8')
+            data = json.loads(re.search(r'type="application/json">(.*?)</script>', html, re.S)[1])
+            self.assertEqual(data['pipelines'][0]['instance_count'], 2)
+            self.assertEqual(len(data['pipeline_instances']), 2)
+            self.assertEqual([e['statistics'][0]['value'] for e in data['statistics']['abc']], [5, 28])
+
     def collect(self, root, *, hashes=False, fail=False, package_dump=None):
         binary = root / 'layer.so'
         binary.write_bytes(b'installed layer')

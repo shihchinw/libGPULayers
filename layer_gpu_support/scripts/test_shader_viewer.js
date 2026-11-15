@@ -26,6 +26,15 @@ const context = vm.createContext({
 const script = html.match(/<script>(.*?)<\/script>/s)[1].replace(/render\(\);\s*$/, '');
 vm.runInContext(script, context);
 vm.runInContext(`renderSourceView=()=>{};`, context);
+vm.runInContext(`{
+ const rows=statRows([
+  {key:'instance1:0',index:0,statistics:[{name:'Registers',value:5}]},
+  {key:'instance2:0',index:0,statistics:[{name:'Registers',value:28}]}
+ ]);
+ assert.equal(rows[0].values['instance1:0'],5);
+ assert.equal(rows[0].values['instance2:0'],28);
+ assert.equal(Object.keys(rows[0].values).length,2);
+}`,context);
 vm.runInContext(`(async()=>{
     const ids=D.shaders.slice(0,2).map(s=>s.shader_sha1);
     assert.equal(ids.length,2,'use a report containing at least two shaders');

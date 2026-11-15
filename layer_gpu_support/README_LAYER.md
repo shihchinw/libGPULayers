@@ -214,6 +214,11 @@ Opening a shader candidate highlights and focuses its visible shader row.
 Escape closes detail panels.
 
 The Help tab explains data scope, capture-relative flags, sorting, and fields.
+Pipeline rows group identical shader combinations, not complete pipeline state.
+Details retain each captured pipeline instance and give every executable its own
+column identified by instance ID and executable index. Summary metrics are maxima
+across instances; usage and pass labels remain at shader-combination group level.
+Statistics CSV exports include the instance ID and a capture-file instance key.
 Flags are investigation hints, not verified GPU bottlenecks. Pipeline flag
 buttons match any selected tag; Clear Tags resets only those selections.
 The list-plus icon includes unused entries. Shader Type buttons filter stages.
