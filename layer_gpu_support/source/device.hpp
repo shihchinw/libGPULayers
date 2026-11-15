@@ -54,6 +54,8 @@
 
 #include <string>
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include <vulkan/utility/vk_safe_struct.hpp>
@@ -65,6 +67,7 @@
 
 class ShaderDump;
 class ShaderDumpComms;
+struct DeferredRayTracingPipelines;
 
 /**
  * @brief Function pointer type for patching VkDeviceCreateInfo.
@@ -186,6 +189,10 @@ public:
 
     /** @brief True if pipeline executable information was enabled on this device. */
     bool pipelineExecutableInfoEnabled {false};
+
+    // Protected separately from g_vulkanLock; driver joins must remain concurrent.
+    std::mutex deferredPipelineLock;
+    std::unordered_map<VkDeferredOperationKHR, std::shared_ptr<DeferredRayTracingPipelines>> deferredPipelines;
 
     /**
      * @brief The current timeline sem target value the next use waits for.

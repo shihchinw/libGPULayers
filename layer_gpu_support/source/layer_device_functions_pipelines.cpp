@@ -26,11 +26,70 @@
 #include "device.hpp"
 #include "framework/device_dispatch_table.hpp"
 #include "shader_dump.hpp"
+#include "deferred_pipeline.hpp"
 
 #include <map>
 #include <mutex>
 
 extern std::mutex g_vulkanLock;
+
+namespace
+{
+void captureDeferredPipelines(Device& layer, VkDeferredOperationKHR operation)
+{
+    std::shared_ptr<DeferredRayTracingPipelines> pending;
+    {
+        std::lock_guard<std::mutex> guard(layer.deferredPipelineLock);
+        const auto it = layer.deferredPipelines.find(operation);
+        if (it == layer.deferredPipelines.end()) return;
+        pending = it->second;
+    }
+    pending->complete([&] { return layer.driver.vkGetDeferredOperationResultKHR(layer.device, operation); },
+                      [&](const auto& infos, VkPipeline* pipelines) {
+        if (!layer.shaderDump) return;
+        for (size_t i = 0; i < infos.size(); ++i)
+            if (pipelines[i] != VK_NULL_HANDLE)
+                layer.shaderDump->recordRayTracingPipeline(layer.device, layer.driver, pipelines[i], infos[i],
+                                                          layer.pipelineExecutableInfoEnabled);
+    });
+}
+}
+
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkDeferredOperationJoinKHR<user_tag>(VkDevice device, VkDeferredOperationKHR operation)
+{
+    std::unique_lock<std::mutex> lock {g_vulkanLock};
+    auto* layer = Device::retrieve(device);
+    lock.unlock();
+    const auto result = layer->driver.vkDeferredOperationJoinKHR(device, operation);
+    captureDeferredPipelines(*layer, operation);
+    return result;
+}
+
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetDeferredOperationResultKHR<user_tag>(VkDevice device, VkDeferredOperationKHR operation)
+{
+    std::unique_lock<std::mutex> lock {g_vulkanLock};
+    auto* layer = Device::retrieve(device);
+    lock.unlock();
+    const auto result = layer->driver.vkGetDeferredOperationResultKHR(device, operation);
+    captureDeferredPipelines(*layer, operation);
+    return result;
+}
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkDestroyDeferredOperationKHR<user_tag>(VkDevice device, VkDeferredOperationKHR operation,
+                                                                      const VkAllocationCallbacks* pAllocator)
+{
+    std::unique_lock<std::mutex> lock {g_vulkanLock};
+    auto* layer = Device::retrieve(device);
+    lock.unlock();
+    captureDeferredPipelines(*layer, operation);
+    layer->driver.vkDestroyDeferredOperationKHR(device, operation, pAllocator);
+    std::lock_guard<std::mutex> guard(layer->deferredPipelineLock);
+    layer->deferredPipelines.erase(operation);
+}
+
 
 // Opcode IDs for interesting SPIR-V opcodes
 static const uint32_t SPIRV_OPCODE_OPDECORATE {71};
@@ -407,7 +466,13 @@ VKAPI_ATTR VkResult VKAPI_CALL
         pipelineCache = VK_NULL_HANDLE;
     }
 
-    std::vector<VkRayTracingPipelineCreateInfoKHR> createInfos(pCreateInfos, pCreateInfos + createInfoCount);
+    // A requested deferral may outlive this call, including all modified inputs.
+    std::shared_ptr<DeferredRayTracingPipelines> pending;
+    if (deferredOperation != VK_NULL_HANDLE)
+        pending = std::make_shared<DeferredRayTracingPipelines>(createInfoCount, pCreateInfos, pPipelines);
+    std::vector<VkRayTracingPipelineCreateInfoKHR> immediateInfos;
+    if (!pending) immediateInfos.assign(pCreateInfos, pCreateInfos + createInfoCount);
+    auto& createInfos = pending ? pending->infos : immediateInfos;
     if (layer->pipelineExecutableInfoEnabled && layer->instance->config.shader_dump_capture_statistics())
     {
         for (auto& createInfo : createInfos) createInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
@@ -422,7 +487,13 @@ VKAPI_ATTR VkResult VKAPI_CALL
                                                                           createInfos.data(),
                                                                           pAllocator,
                                                                           pPipelines);
-    if ((result == VK_SUCCESS || result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
+    if (result == VK_OPERATION_DEFERRED_KHR && pending)
+    {
+        std::lock_guard<std::mutex> guard(layer->deferredPipelineLock);
+        layer->deferredPipelines[deferredOperation] = std::move(pending);
+    }
+    else if ((result == VK_SUCCESS || result == VK_OPERATION_NOT_DEFERRED_KHR ||
+              result == VK_PIPELINE_COMPILE_REQUIRED) && layer->shaderDump)
     {
         for (uint32_t i = 0; i < createInfoCount; ++i)
         {

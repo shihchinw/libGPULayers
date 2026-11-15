@@ -30,6 +30,14 @@
 // Functions for shader dump usage tracking
 
 template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkDeferredOperationJoinKHR<user_tag>(VkDevice device, VkDeferredOperationKHR operation);
+template<>
+VKAPI_ATTR VkResult VKAPI_CALL layer_vkGetDeferredOperationResultKHR<user_tag>(VkDevice device, VkDeferredOperationKHR operation);
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkDestroyDeferredOperationKHR<user_tag>(VkDevice device, VkDeferredOperationKHR operation,
+                                                                      const VkAllocationCallbacks* pAllocator);
+
+template<>
 VKAPI_ATTR VkResult VKAPI_CALL layer_vkBeginCommandBuffer<user_tag>(VkCommandBuffer commandBuffer,
                                                                     const VkCommandBufferBeginInfo* pBeginInfo);
 
