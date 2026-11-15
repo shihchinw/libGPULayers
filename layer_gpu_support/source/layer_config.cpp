@@ -168,7 +168,6 @@ void LayerConfig::parse_shader_dump_options(const json& config)
     conf_shader_dump_output_path = dump.at("output_path");
     conf_shader_dump_capture_statistics = dump.value("capture_statistics", true);
     conf_shader_dump_detailed = dump.value("mode", "compact") == "detailed";
-    conf_shader_dump_clear_output = dump.value("clear_output", false);
     conf_shader_dump_capture_debug_utils = dump.value("capture_debug_utils", true);
     conf_shader_dump_frame_summary = dump.value("usage_capture", "frame_summary") == "frame_summary";
     conf_shader_dump_frame_start = dump.value("frame_start", 0U);
@@ -470,11 +469,6 @@ bool LayerConfig::shader_dump_capture_statistics() const
 bool LayerConfig::shader_dump_detailed() const
 {
     return conf_shader_dump_detailed;
-}
-
-bool LayerConfig::shader_dump_clear_output() const
-{
-    return conf_shader_dump_clear_output;
 }
 
 /* See header for documentation. */

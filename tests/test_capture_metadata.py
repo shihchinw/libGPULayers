@@ -13,6 +13,31 @@ from lglpy.android import capture
 
 
 class CaptureMetadataTests(unittest.TestCase):
+    def test_session_reports_keep_devices_separate_and_inherit_capture_metadata(self):
+        spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
+        report = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(report)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'capture_info.json').write_text(json.dumps({'schema_version': 1, 'application': {'version_code': '17'}}))
+            for name, value in [('device-a', 5), ('device-b', 28)]:
+                device = root / 'devices' / name
+                (device / 'pipelines').mkdir(parents=True)
+                (device / 'pipelines' / 'same-1.json').write_text(json.dumps({
+                    'pipeline_signature': 'abc', 'pipeline_instance_id': 1,
+                    'executables': [{'index': 0, 'statistics': [{'name': 'Registers used', 'value': value}]}]}))
+            report.main([str(root)])
+            index = (root / 'shader_usage_report.html').read_text(encoding='utf-8')
+            self.assertIn('devices/device-a/shader_usage_report.html', index)
+            self.assertIn('devices/device-b/shader_usage_report.html', index)
+            import re
+            for name, value in [('device-a', 5), ('device-b', 28)]:
+                page = (root / 'devices' / name / 'shader_usage_report.html').read_text(encoding='utf-8')
+                data = json.loads(re.search(r'type="application/json">(.*?)</script>', page, re.S)[1])
+                self.assertEqual(len(data['pipeline_instances']), 1)
+                self.assertEqual(data['statistics']['abc'][0]['statistics'][0]['value'], value)
+                self.assertEqual(data['capture_info']['application']['version_code'], '17')
+
     def test_damaged_pipeline_and_partial_usage_do_not_discard_good_records(self):
         spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
         report = importlib.util.module_from_spec(spec)

@@ -21,6 +21,16 @@ def module(*entries):
 
 
 class ShaderConversionTests(unittest.TestCase):
+    @patch.object(report, 'convert_shader')
+    def test_session_conversion_visits_each_device_without_mixing_outputs(self, convert):
+        for name in ('device-a', 'device-b'):
+            shaders = self.root / 'devices' / name / 'shaders'
+            shaders.mkdir(parents=True)
+            (shaders / self.source.name).write_bytes(self.source.read_bytes())
+        report.main([str(self.root), '--convert-shader', '*', '--formats', 'glsl', '--jobs', '1'])
+        self.assertEqual(convert.call_count, 2)
+        self.assertEqual({call.args[0].name for call in convert.call_args_list}, {'device-a', 'device-b'})
+
     def test_atomic_publish_failure_preserves_previous_output(self):
         target = self.root / 'previous.glsl'
         target.write_bytes(b'previous complete output')

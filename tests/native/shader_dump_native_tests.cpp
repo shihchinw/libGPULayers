@@ -113,7 +113,7 @@ static void testDrawHooks()
     VkDeviceCreateInfo deviceInfo {};
     Device context(nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr, deviceInfo);
     testDevice=&context;
-    context.shaderDump=std::make_unique<ShaderDump>(root.string(),false,true,0,0,false,nullptr);
+    context.shaderDump=std::make_unique<ShaderDump>(root.string(),true,0,0,false,nullptr);
     VkPipelineShaderStageCreateInfo stage {};
     stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stage.stage=VK_SHADER_STAGE_FRAGMENT_BIT;stage.pName="main";
@@ -280,7 +280,7 @@ static void testAtomicOutputAndFailure()
     require(!ShaderDumpIO::appendTable(table, "a,b\n", "3,4\n"), "incomplete table accepted");
 
     // A preexisting corrupt binary is repaired, not accepted solely by filename.
-    ShaderDump dump((root / "capture").string(), false, true, 0, 0, false, nullptr);
+    ShaderDump dump((root / "capture").string(), true, 0, 0, false, nullptr);
     const uint32_t code[] = {0x07230203, 0x10000, 0, 1, 0};
     dump.recordShaderModule(reinterpret_cast<VkShaderModule>(uintptr_t(1)), code, 5, code, 5);
     std::filesystem::path binary;
@@ -288,7 +288,7 @@ static void testAtomicOutputAndFailure()
         if (entry.path().extension() == ".spirv") binary = entry.path();
     require(!binary.empty(), "SPIR-V not published");
     { std::ofstream stream(binary, std::ios::binary | std::ios::trunc); stream << "broken"; }
-    ShaderDump repair((root / "capture").string(), false, true, 0, 0, false, nullptr);
+    ShaderDump repair((root / "capture").string(), true, 0, 0, false, nullptr);
     repair.recordShaderModule(reinterpret_cast<VkShaderModule>(uintptr_t(1)), code, 5, code, 5);
     require(ShaderDumpIO::matchesFile(binary, reinterpret_cast<const char*>(code), sizeof(code)), "truncated SPIR-V was cached");
     // A failed publication disables capture instead of reporting further success.
@@ -308,6 +308,24 @@ static void testAtomicOutputAndFailure()
     std::cout << "PASS atomic publication, binary repair, schema/torn-write rejection and failure isolation\n";
 }
 
+static void testDeviceOutputIsolation()
+{
+    const auto root = std::filesystem::temp_directory_path() /
+        ("lgl-device-test-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto first = ShaderDump::createDeviceOutputPath(root.string());
+    require(!first.empty(), "first device output was not allocated");
+    const auto marker = std::filesystem::path(first) / "keep.txt";
+    { std::ofstream stream(marker); stream << "old data"; }
+    const auto second = ShaderDump::createDeviceOutputPath(root.string());
+    require(first != second && !second.empty(), "device directories collided");
+    ShaderDump a(first, true, 0, 0, false, nullptr);
+    ShaderDump b(second, true, 0, 0, false, nullptr);
+    require(std::filesystem::exists(marker), "another device deleted existing data");
+    require(std::filesystem::exists(std::filesystem::path(first) / "pipelines") &&
+            std::filesystem::exists(std::filesystem::path(second) / "pipelines"), "missing isolated pipeline roots");
+    std::filesystem::remove_all(root); // host-created test directory only
+}
+
 int main()
 {
     try {
@@ -317,6 +335,7 @@ int main()
         testStatisticsFlagsForType<VkRayTracingPipelineCreateInfoKHR, vku::safe_VkRayTracingPipelineCreateInfoKHR>(VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR);
         testDrawHooks();
         testAtomicOutputAndFailure();
+        testDeviceOutputIsolation();
         std::cout << "PASS deferred ownership, pending/error paths, concurrent exactly-once completion\n";
         return 0;
     } catch (const std::exception& error) {

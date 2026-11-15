@@ -134,8 +134,9 @@ Device::Device(Instance* _instance,
                 commsWrapper = std::make_unique<ShaderDumpComms>(*commsModule);
             }
         }
-        shaderDump = std::make_unique<ShaderDump>(instance->config.shader_dump_output_path(),
-                                                  instance->config.shader_dump_clear_output(),
+        const auto deviceOutput = ShaderDump::createDeviceOutputPath(instance->config.shader_dump_output_path());
+        if (deviceOutput.empty()) LAYER_ERR("Cannot allocate a shader dump device output directory");
+        shaderDump = std::make_unique<ShaderDump>(deviceOutput,
                                                   instance->config.shader_dump_frame_summary(),
                                                   instance->config.shader_dump_frame_start(),
                                                   instance->config.shader_dump_frame_count(),

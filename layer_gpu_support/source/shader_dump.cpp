@@ -140,7 +140,25 @@ std::string statisticValue(const VkPipelineExecutableStatisticKHR& statistic)
 }
 }  // namespace
 
-ShaderDump::ShaderDump(const std::string& outputPath_, bool clearOutput, bool frameSummary, uint32_t frameStart, uint32_t frameCount,
+std::string ShaderDump::createDeviceOutputPath(const std::string& sessionPath)
+{
+    if (sessionPath.empty()) return {};
+    static std::atomic<uint64_t> nextDevice {0};
+    std::error_code error;
+    const auto parent = std::filesystem::path(sessionPath) / "devices";
+    std::filesystem::create_directories(parent, error);
+    if (error) return {};
+    const auto stamp = std::chrono::system_clock::now().time_since_epoch().count();
+    for (unsigned attempt = 0; attempt < 10000; ++attempt)
+    {
+        const auto path = parent / ("device-" + std::to_string(stamp) + "-" + std::to_string(nextDevice++));
+        if (std::filesystem::create_directory(path, error)) return path.string();
+        if (error) return {};
+    }
+    return {};
+}
+
+ShaderDump::ShaderDump(const std::string& outputPath_, bool frameSummary, uint32_t frameStart, uint32_t frameCount,
                        bool detailed_, ShaderDumpComms* comms_)
     : outputPath(outputPath_),
       writeFrameSummary(frameSummary),
@@ -154,11 +172,6 @@ ShaderDump::ShaderDump(const std::string& outputPath_, bool clearOutput, bool fr
         return;
     }
     std::error_code error;
-    if (clearOutput)
-    {
-        std::filesystem::remove_all(outputPath, error);
-        if (error) { writeFailure("legacy output reset"); return; }
-    }
     for (const char* directory : {"shaders", "pipelines", "tables"})
     {
         std::filesystem::create_directories(std::filesystem::path(outputPath) / directory, error);

@@ -9,6 +9,7 @@ statistics and recognizes the current QCOM and Mali statistic conventions.
 import argparse
 from datetime import datetime
 import hashlib
+import html
 import csv
 import json
 import io
@@ -184,6 +185,8 @@ def read_capture_info(root, usage=None):
     devices, warnings = [], []
     info = {'schema_version': 1}
     path = root / 'capture_info.json'
+    if not path.exists() and root.parent.name == 'devices':
+        path = root.parent.parent / 'capture_info.json'
     if path.exists():
         try:
             snapshot = json.loads(path.read_text(encoding='utf-8'))
@@ -581,7 +584,7 @@ def convert_all_shaders(root, formats, force=False, cross='spirv-cross', dis='sp
     return failed
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('dump_root', type=Path)
     parser.add_argument('--output', type=Path)
@@ -594,10 +597,52 @@ def main():
                         help='Parallel worker processes for --convert-shader "*" (default: CPU logical core count; 1 for serial)')
     parser.add_argument('--spirv-cross', default='spirv-cross', help='SPIRV-Cross executable path')
     parser.add_argument('--spirv-dis', default='spirv-dis', help='spirv-dis executable path')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.jobs is not None and args.jobs < 1:
         parser.error('--jobs must be at least 1')
     root = args.dump_root
+    devices_dir = root / 'devices'
+    device_roots = sorted(path for path in devices_dir.iterdir() if path.is_dir()) if devices_dir.is_dir() else []
+    if device_roots:
+        output = args.output or root
+        failures, reports = 0, []
+        for device_root in device_roots:
+            if args.convert_shader and args.convert_shader != '*':
+                shader_id = sha(args.convert_shader).lower()
+                if not any((device_root / 'shaders' / f'{shader_id}{suffix}').is_file() for suffix in ('.spv', '.spirv')):
+                    continue
+            child_args = [str(device_root)]
+            if args.convert_shader:
+                child_args += ['--convert-shader', args.convert_shader, '--formats', *args.formats,
+                               '--spirv-cross', args.spirv_cross, '--spirv-dis', args.spirv_dis]
+                if args.force:
+                    child_args.append('--force')
+                if args.jobs is not None:
+                    child_args += ['--jobs', str(args.jobs)]
+            else:
+                child_args += ['--output', str(output / 'devices' / device_root.name)]
+            print(f'Device capture: {device_root.name}')
+            try:
+                main(child_args)
+                reports.append(device_root.name)
+            except SystemExit as error:
+                if error.code:
+                    failures += 1
+        if args.convert_shader:
+            if failures or not reports:
+                parser.exit(1, 'One or more device conversions failed, or the requested shader was not found.\n')
+            return
+        output.mkdir(parents=True, exist_ok=True)
+        links = [(quote(f'devices/{name}/shader_usage_report.html', safe='/'), name) for name in reports]
+        redirect = f'<meta http-equiv="refresh" content="0;url={links[0][0]}">' if len(links) == 1 else ''
+        document = ('<!doctype html><meta charset="utf-8"><title>Shader capture devices</title>' + redirect +
+                    '<h1>Shader capture devices</h1><p>Device captures are kept separate; pipeline IDs and frame numbers are local to each device.</p><ul>' +
+                    ''.join(f'<li><a href="{html.escape(url, quote=True)}">{html.escape(name)}</a></li>' for url, name in links) + '</ul>')
+        atomic_write(output / 'shader_usage_report.html', document.encode('utf-8'))
+        if failures:
+            parser.exit(1, 'Some device reports failed; successful reports were retained.\n')
+        print(f'Wrote device report index to: {output}')
+        return
     if args.convert_shader == '*':
         try:
             failed = convert_all_shaders(root, args.formats, args.force, args.spirv_cross, args.spirv_dis, args.jobs)

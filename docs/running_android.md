@@ -70,19 +70,28 @@ file itself, and is not implied by order of the command line options.
 ### Pulling capture artifacts
 
 Use `--pull-artifact <host-directory>` to collect a GPU Support shader dump.
-It currently does not support other layers. The specified directory is a
+The installer uses registered host-side artifact handlers; GPU Support currently
+provides one. Unsupported or disabled layers are skipped. The specified directory is a
 collection root and may contain earlier captures. Each capture creates a host
 directory named `<YYYYMMDD_HHMMSS>_<package>` (with a numeric suffix on a
 same-second collision), for example
-`captures/20260829_153042_com.foo.cabin_es32`. The layer writes to
-`/sdcard/Android/data/<package>/files/lgl-artifacts/shader-dump` and the
-installer clears only that device-side subdirectory.
+`captures/20260829_153042_com.foo.cabin_es32`. The installer configures a unique
+`/sdcard/Android/data/<package>/files/lgl-artifacts/shader-dump/session-<UUID>`.
+Each logical Vulkan device writes into its own `devices/device-<ID>/` directory.
+The layer creates output directories but never deletes files or directories.
 
-The host capture directory contains `pipelines/`, `shaders/`,
-`usage_by_label.csv`, `shader_usage_report.html`, and the report CSV files directly.
-The installer omits the device-side `shader-dump/` wrapper and moves raw
-CSV files out of `tables/`. Detailed captures also contain `frames/` and
-additional raw CSV files. No layer rebuild is needed for this host layout.
+Only the current session is pulled to the host. Each device directory contains
+`pipelines/`, `shaders/`, `frame_pipeline_usage.csv`, its report and CSV exports.
+The installer moves CSV files out of each device's `tables/` directory. The capture
+root has `capture_info.json` and a `shader_usage_report.html` device index; with one
+device it automatically opens that report. Older flat captures remain readable.
+
+By default old device sessions are retained. Add `--reset-artifacts` alongside
+`--pull-artifact` to reset old device data owned by the selected, enabled capture
+handlers, without an extra prompt. Unsupported/disabled layers do not participate.
+Each handler validates its own target scope before deletion. GPU Support validates
+the selected device/package and resolved shader-dump root. Host captures and sibling device artifacts remain.
+The removed layer-side `clear_output` setting is ignored in legacy configs.
 
 GPU Support's final config must have `shader_dump.enable=true`; the installer
 does not force this on. Artifact detail is configured under `shader_dump.mode`.
@@ -95,17 +104,19 @@ While a shader dump artifact capture is active, `layer_gpu_support` reports
 SPIR-V, pipeline, and frame counts to the installer through its `GPUShaderDump`
 comms endpoint. The installer displays the same live status for both
 `--timed-capture` and interactive captures; press Enter to end an interactive
-capture. If the endpoint cannot connect, it reports `live progress unavailable`
-and continues capture and artifact pulling without an ADB polling fallback.
+capture. If the endpoint has not connected after five seconds, it reports
+`live progress unavailable` once and keeps waiting. A later connection resumes
+status updates every five seconds, including while the interactive Enter prompt
+is waiting. Capture and artifact pulling continue without an ADB polling fallback.
 
 Pressing Ctrl+C during application startup or capture ends the capture and
 asks whether to pull the captured artifacts (`[y/N]`). Answer `y` to pull into
 the same timestamped host directory allocated at the start and generate the
 report. Answer `n` or press Enter to skip pulling and leave the artifacts on
 the device. Both choices continue layer cleanup. Ctrl+C or end-of-input at
-the confirmation prompt also skips pulling and continues cleanup. A new
-capture clears the previous device-side shader dump, so pull any wanted
-artifacts before starting another capture.
+the confirmation prompt also skips pulling and continues cleanup. A new capture
+uses a new session and preserves previous device data unless --reset-artifacts
+is explicitly specified. The original session path is saved in capture_info.json.
 
 After a successful pull, the installer automatically writes:
 
@@ -204,3 +215,18 @@ adb shell settings delete global gpu_debug_layer_app
 _Copyright © 2024-2025, Arm Limited and contributors._
 
 [1]: https://github.com/KhronosGroup/Vulkan-ValidationLayers/releases/
+
+### Artifact handler development
+
+`lgl_android_install.py` only coordinates the generic artifact lifecycle and CLI.
+`lglpy/android/artifacts.py` defines the handler contract, explicit factory registry,
+shared session allocation and metadata distribution. GPU Support implements its
+config, path validation/reset, pull layout, report generation and progress endpoint
+in `layer_gpu_support/scripts/android_artifacts.py`. A new layer supplies a handler
+and registry entry instead of adding layer-specific command-line options or branches
+to the installer. Config files cannot select arbitrary executable plugin paths.
+
+With multiple enabled handlers, host outputs are isolated under per-layer directories
+inside the capture root; each report receives the common capture metadata. The generic
+reset option is passed to each enabled handler, not applied to the shared artifact
+root. A failed pull does not skip other handlers or layer cleanup.

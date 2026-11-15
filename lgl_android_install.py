@@ -122,7 +122,6 @@ for more details.
 
 import argparse
 import atexit
-import csv
 import json
 import os
 import subprocess as sp
@@ -135,6 +134,7 @@ from lglpy.android.adb import ADBConnect
 from lglpy.android.utils import AndroidUtils, NamedTempFile
 from lglpy.android.filesystem import AndroidFilesystem
 from lglpy.android.capture import collect_capture_info, save_capture_info, timestamp
+from lglpy.android.artifacts import configure_artifact_output, save_artifact_info
 from lglpy.comms import server
 from lglpy.ui import console
 
@@ -424,208 +424,6 @@ def get_layer_configs(metadata: list[LayerMeta], userconfs: list[str]) -> bool:
     return True
 
 
-def configure_artifact_output(metadata: list[LayerMeta], host_path: str,
-                              device_artifact_dir: str,
-                              package: str) -> tuple[bool, Optional[LayerMeta], Optional[str]]:
-    '''Configure GPU Support artifact capture and allocate one host run directory.'''
-    support_layer = next((layer for layer in metadata
-                          if layer.name == 'VK_LAYER_LGL_gpu_support'), None)
-    if not support_layer:
-        print('WARNING: --pull-artifact currently supports only layer_gpu_support; skipping artifact pull.')
-        return True, None, None
-
-    try:
-        config = json.loads(support_layer.config)
-    except (TypeError, json.JSONDecodeError) as error:
-        print(f'ERROR: Cannot read GPU Support config for artifact capture: {error}')
-        return False, None, None
-
-    shader_dump = config.get('shader_dump', {})
-    if not isinstance(shader_dump, dict) or not shader_dump.get('enable', False):
-        print('WARNING: GPU Support shader_dump.enable is false; skipping artifact pull and report.')
-        return True, None, None
-
-    host_path = os.path.abspath(host_path)
-    try:
-        os.makedirs(host_path, exist_ok=True)
-    except OSError as error:
-        print(f'ERROR: Cannot create artifact collection directory {host_path}: {error}')
-        return False, None, None
-
-    timestamp = time.strftime('%Y%m%d_%H%M%S')
-    base_name = f'{timestamp}_{package}'
-    for suffix in range(10000):
-        name = base_name if suffix == 0 else f'{base_name}_{suffix:02d}'
-        capture_path = os.path.join(host_path, name)
-        try:
-            os.mkdir(capture_path)
-            break
-        except FileExistsError:
-            continue
-        except OSError as error:
-            print(f'ERROR: Cannot create artifact capture directory {capture_path}: {error}')
-            return False, None, None
-    else:
-        print(f'ERROR: Cannot allocate a unique artifact capture directory below {host_path}')
-        return False, None, None
-
-    shader_dump['output_path'] = f'{device_artifact_dir}/shader-dump'
-    shader_dump['clear_output'] = True
-    support_layer.config = json.dumps(config, indent=4)
-    return True, support_layer, capture_path
-
-
-def prepare_artifact_output(conn: ADBConnect, package: str,
-                            device_artifact_dir: str) -> bool:
-    '''Create an empty GPU Support artifact directory for a new capture.'''
-    try:
-        shader_dump_dir = f'{device_artifact_dir}/shader-dump'
-        # The layer owns the directory as the target app UID. Do not create
-        # the root as adb shell: that changes ownership and can block writes.
-        # Only remove GPU Support's own subdirectory; sibling artifacts stay.
-        conn.adb_run('run-as', package, 'rm', '-rf', shader_dump_dir)
-    except sp.CalledProcessError as error:
-        print(f'ERROR: Cannot prepare device artifact directory: {error}')
-        return False
-    return True
-
-
-class ShaderDumpProgressReporter:
-    '''Render live shader dump telemetry received through the comms endpoint.'''
-
-    def __init__(self, timed_capture: int):
-        self.timed_capture = timed_capture
-        self.counts = {'shaders': 0, 'pipelines': 0, 'frames': 0}
-        self.started = False
-        self.unavailable_reason: Optional[str] = None
-        self.unavailable_reported = False
-        self.start_time = 0.0
-        self.last_report_time = 0.0
-        self.stop_event = threading.Event()
-        self.lock = threading.Lock()
-        self.thread: Optional[threading.Thread] = None
-
-    def start(self) -> None:
-        '''Begin reporting after the application has been launched.'''
-        self.start_time = time.monotonic()
-        print('Shader dump capture active; waiting for live progress endpoint.')
-        self.thread = threading.Thread(target=self.run, daemon=True)
-        self.thread.start()
-
-    def mark_unavailable(self, reason: str) -> None:
-        '''Record an endpoint setup failure without affecting capture itself.'''
-        with self.lock:
-            if not self.unavailable_reason:
-                self.unavailable_reason = reason
-
-    def handle_message(self, payload: dict) -> None:
-        '''Consume one message from the GPUShaderDump comms endpoint.'''
-        message_type = payload.get('type')
-        if message_type not in ('capture_started', 'progress', 'capture_finished'):
-            return
-
-        became_live = False
-        with self.lock:
-            if not self.started:
-                self.started = True
-                became_live = True
-            for name in self.counts:
-                value = payload.get(name)
-                if isinstance(value, int) and value >= 0:
-                    self.counts[name] = value
-
-        if became_live:
-            print('Shader dump live progress connected.')
-            self.print_status()
-
-    def print_status(self) -> None:
-        '''Print the latest counters, using the same format for both modes.'''
-        with self.lock:
-            if not self.started:
-                return
-            counts = self.counts.copy()
-
-        elapsed = max(0, int(time.monotonic() - self.start_time))
-        if self.timed_capture:
-            time_status = f'{max(0, self.timed_capture - elapsed)}s remaining'
-        else:
-            time_status = f'{elapsed}s elapsed'
-        print(f'Shader dump capturing | {time_status:<14} | '
-              f'SPIR-V {counts["shaders"]:>4} | pipelines {counts["pipelines"]:>4} | '
-              f'frames {counts["frames"]:>4}')
-
-    def print_unavailable(self) -> None:
-        '''Print one explicit status when no endpoint connection is available.'''
-        with self.lock:
-            if self.unavailable_reported:
-                return
-            if self.unavailable_reason is None:
-                self.unavailable_reason = 'endpoint did not connect'
-            reason = self.unavailable_reason
-            self.unavailable_reported = True
-        print(f'Shader dump live progress unavailable ({reason}); capture continues.')
-
-    def run(self) -> None:
-        '''Emit periodic output without polling the device over ADB.'''
-        while not self.stop_event.wait(1.0):
-            elapsed = time.monotonic() - self.start_time
-            with self.lock:
-                live = self.started
-                unavailable = self.unavailable_reason is not None
-            if not live:
-                if unavailable or elapsed >= 5.0:
-                    self.print_unavailable()
-                    return
-                continue
-            if elapsed - self.last_report_time >= 5.0:
-                self.last_report_time = elapsed
-                self.print_status()
-
-    def stop(self) -> None:
-        '''Stop rendering and report unavailable status for short captures too.'''
-        self.stop_event.set()
-        if self.thread:
-            self.thread.join(timeout=1.0)
-        with self.lock:
-            live = self.started
-        if not live:
-            self.print_unavailable()
-
-
-def summarize_shader_dump(host_path: str) -> None:
-    '''Print the final shader dump file counts after artifact pull.'''
-    dump_root = host_path
-    if not os.path.isdir(dump_root):
-        return
-
-    def count_files(directory: str, suffix: Optional[str] = None) -> int:
-        path = os.path.join(dump_root, directory)
-        if not os.path.isdir(path):
-            return 0
-        return sum(1 for entry in os.scandir(path)
-                   if entry.is_file() and (suffix is None or entry.name.endswith(suffix)))
-
-    def count_usage_frames() -> int:
-        frames = count_files('frames', '.json')
-        if frames:
-            return frames
-        usage_table = os.path.join(dump_root, 'frame_pipeline_usage.csv')
-        if not os.path.isfile(usage_table):
-            usage_table = os.path.join(dump_root, 'usage_by_label.csv')
-        if not os.path.isfile(usage_table):
-            return 0
-        try:
-            with open(usage_table, newline='', encoding='utf-8') as handle:
-                return len({row['frame'] for row in csv.DictReader(handle) if row.get('frame')})
-        except OSError:
-            return 0
-
-    print('Shader dump complete: '
-          f'{count_files("shaders", ".spirv")} SPIR-V, '
-          f'{count_files("pipelines", ".json")} pipelines, '
-          f'{count_usage_frames()} frames')
-
-
 def confirm_interrupted_artifact_pull(host_path: str) -> bool:
     '''Ask whether to save an interrupted capture to its original directory.'''
     print(f'\nArtifact output directory: {os.path.abspath(host_path)}')
@@ -640,59 +438,6 @@ def confirm_interrupted_artifact_pull(host_path: str) -> bool:
         if answer in ('', 'n', 'no'):
             return False
         print('Please enter y or n.')
-
-
-def pull_artifacts(conn: ADBConnect, host_path: str, device_artifact_dir: str) -> bool:
-    '''Pull the complete artifact tree to the configured host directory.'''
-    try:
-        # Each host capture is dedicated to shader data; omit the device wrapper.
-        conn.adb('pull', f'{device_artifact_dir}/shader-dump/.', os.path.abspath(host_path))
-        table_dir = os.path.join(host_path, 'tables')
-        if os.path.isdir(table_dir):
-            entries = list(os.scandir(table_dir))
-            # Check all targets before moving anything; preserve data on collision.
-            for entry in entries:
-                target = os.path.join(host_path, entry.name)
-                if not entry.is_file() or os.path.exists(target):
-                    raise OSError(f'Cannot flatten table without overwriting data: {entry.path}')
-            for entry in entries:
-                os.rename(entry.path, os.path.join(host_path, entry.name))
-            os.rmdir(table_dir)
-    except (sp.CalledProcessError, OSError) as error:
-        print(f'ERROR: Failed to pull artifacts; files remain in {device_artifact_dir}: {error}')
-        return False
-    print(f'Artifacts written to: {os.path.abspath(host_path)}')
-    summarize_shader_dump(host_path)
-    return True
-
-
-def generate_shader_dump_report(layer: LayerMeta, host_path: str) -> None:
-    '''Run the selected layer's report generator without importing its implementation.'''
-    dump_root = host_path
-    script = os.path.join(layer.layer_dir, 'scripts', 'shader_dump_report.py')
-    report = os.path.join(dump_root, 'shader_usage_report.html')
-    if not os.path.isdir(dump_root):
-        print(f'WARNING: Shader dump root is missing; report not generated: {dump_root}')
-        return
-    if not os.path.isfile(script):
-        print(f'WARNING: Shader dump report script is missing: {script}')
-        return
-
-    try:
-        result = sp.run([sys.executable, script, dump_root], check=False,
-                        stdout=sp.PIPE, stderr=sp.STDOUT, text=True)
-    except OSError as error:
-        print(f'WARNING: Failed to run shader dump report: {error}')
-        return
-
-    if result.returncode != 0 or not os.path.isfile(report):
-        print('WARNING: Shader dump report was not generated; raw artifacts were preserved.')
-        if result.stdout:
-            print(result.stdout.rstrip())
-        print(f'         Re-run manually: {sys.executable} {script} {dump_root}')
-        return
-
-    print(f'Shader dump report written to: {report}')
 
 
 def install_layer_binary(conn: ADBConnect, layer: LayerMeta) -> bool:
@@ -866,7 +611,7 @@ def configure_logcat(conn: ADBConnect, output_path: str) -> None:
 def configure_server(conn: ADBConnect,
                      timeline_file: Optional[str],
                      profile_dir: Optional[str],
-                     shader_dump_reporter: Optional[ShaderDumpProgressReporter] = None) -> None:
+                     artifact_progress: Optional[list] = None) -> None:
     '''
     Configure the remote server to collect data.
 
@@ -878,7 +623,7 @@ def configure_server(conn: ADBConnect,
         timeline_file: The desired output file path for timeline.
         profile_dir: The desired output directory path for profile. Existing
             files in the directory may be overwritten.
-        shader_dump_reporter: Optional renderer for GPU Support progress.
+        artifact_progress: Handler/progress pairs for selected artifact captures.
     '''
     verbose = False
 
@@ -899,10 +644,8 @@ def configure_server(conn: ADBConnect,
             profile_dir, verbose)
         instance.register_endpoint(service_prof)
 
-    if shader_dump_reporter:
-        from lglpy.comms import service_gpu_shader_dump
-        instance.register_endpoint(
-            service_gpu_shader_dump.GPUShaderDumpService(shader_dump_reporter))
+    for handler, progress in artifact_progress or []:
+        handler.register_progress(instance, progress)
 
     # Start it running
     thread = threading.Thread(target=instance.run, daemon=True)
@@ -913,8 +656,8 @@ def configure_server(conn: ADBConnect,
 
     except sp.CalledProcessError:
         print('WARNING: Could not setup Android network comms')
-        if shader_dump_reporter:
-            shader_dump_reporter.mark_unavailable('ADB reverse failed')
+        for _, progress in artifact_progress or []:
+            progress.mark_unavailable('ADB reverse failed')
 
 
 def configure_perfetto(
@@ -1087,6 +830,8 @@ def parse_cli() -> Optional[argparse.Namespace]:
     parser.add_argument(
         '--pull-artifact', type=str, default=None,
         help='pull capture artifacts to this host directory')
+    parser.add_argument('--reset-artifacts', action='store_true',
+                        help='reset old device artifacts owned by selected enabled capture handlers; requires --pull-artifact; no confirmation prompt')
 
     for field in ('scene', 'quality', 'resolution', 'note'):
         parser.add_argument(f'--capture-{field}', default=None,
@@ -1097,6 +842,9 @@ def parse_cli() -> Optional[argparse.Namespace]:
     args = parser.parse_args()
 
     # Validate arguments
+    if args.reset_artifacts and not args.pull_artifact:
+        print('ERROR: --reset-artifacts requires --pull-artifact')
+        return None
     if args.timeline and args.timeline_metadata:
         print('ERROR: Cannot use --timeline with --timeline-metadata')
         return None
@@ -1177,20 +925,32 @@ def main() -> int:
     if not success:
         return 6
 
-    artifact_layer = None
+    artifact_plans = []
     artifact_host_path = None
     if args.pull_artifact:
-        artifact_configured, artifact_layer, artifact_host_path = configure_artifact_output(
+        artifact_configured, artifact_plans, artifact_host_path = configure_artifact_output(
             layers, args.pull_artifact, device_artifact_dir, package)
         if not artifact_configured:
             return 6
 
     capture_info = None
+    reset = getattr(args, 'reset_artifacts', False)
+    if reset and not artifact_plans:
+        print('ERROR: --reset-artifacts requires an enabled artifact capture handler')
+        return 6
+    if reset:
+        AndroidUtils.stop_package(conn)
+    for plan in artifact_plans:
+        if not plan.handler.prepare(conn, package, device_artifact_dir, reset):
+            return 6
     if artifact_host_path:
         print('Collecting capture environment and package metadata ...', flush=True)
         metadata_started = time.monotonic()
         capture_info = collect_capture_info(conn, layers, args, activity, need_32bit)
-        save_capture_info(artifact_host_path, capture_info)
+        capture_info['capture']['artifact_outputs'] = [
+            {'layer': plan.layer.name, 'device_output_path': plan.device_path, 'host_path': plan.host_path}
+            for plan in artifact_plans]
+        save_artifact_info(artifact_host_path, artifact_plans, capture_info, save_capture_info)
         print(f'Capture metadata collected in {time.monotonic() - metadata_started:.1f}s.', flush=True)
 
     # Install files
@@ -1213,14 +973,18 @@ def main() -> int:
         print(f'    - {layer.name}')
     print()
 
-    shader_dump_progress = ShaderDumpProgressReporter(args.timed_capture) if artifact_layer else None
+    artifact_progress = []
+    for plan in artifact_plans:
+        progress = plan.handler.create_progress(args.timed_capture)
+        if progress is not None:
+            artifact_progress.append((plan.handler, progress))
 
     # Enable communications server
-    if args.timeline_metadata or args.profile or shader_dump_progress:
+    if args.timeline_metadata or args.profile or artifact_progress:
         configure_server(conn,
                          args.timeline_metadata,
                          args.profile,
-                         shader_dump_progress)
+                         artifact_progress)
 
     # Enable logcat
     if args.logcat:
@@ -1234,14 +998,14 @@ def main() -> int:
     # Always kill the package to ensure the new layers load
     AndroidUtils.stop_package(conn)
 
-    if shader_dump_progress:
-        shader_dump_progress.start()
+    for _, progress in artifact_progress:
+        progress.start()
 
     interrupted = False
     capture_started = time.monotonic()
     if capture_info:
         capture_info['capture'].update(started_at=timestamp(), status='running')
-        save_capture_info(artifact_host_path, capture_info)
+        save_artifact_info(artifact_host_path, artifact_plans, capture_info, save_capture_info)
     try:
         # Restart the package if requested
         if args.auto_start:
@@ -1250,11 +1014,11 @@ def main() -> int:
         if args.timed_capture > 0:
             for i in range(0, args.timed_capture):
                 seconds_remaining = args.timed_capture - i
-                if not shader_dump_progress:
+                if not artifact_progress:
                     print(f'Waiting {seconds_remaining} seconds ...', end='\r', flush=True)
                 time.sleep(1.0)
 
-            print('Capture time elapsed' if shader_dump_progress else 'Wait time elapsed')
+            print('Capture time elapsed' if artifact_progress else 'Wait time elapsed')
 
         else:
             input('Press Enter when finished to uninstall all layers\n\n')
@@ -1268,31 +1032,37 @@ def main() -> int:
     if args.auto_start:
         AndroidUtils.stop_package(conn)
 
-    if shader_dump_progress:
-        shader_dump_progress.stop()
+    for _, progress in artifact_progress:
+        progress.stop()
 
     if capture_info:
         capture_info['capture'].update(
             ended_at=timestamp(), elapsed_seconds=round(time.monotonic() - capture_started, 3),
             status='interrupted' if interrupted else 'completed')
-        save_capture_info(artifact_host_path, capture_info)
+        save_artifact_info(artifact_host_path, artifact_plans, capture_info, save_capture_info)
 
     artifact_pull_failed = False
     should_pull = bool(artifact_host_path)
     if interrupted and artifact_host_path:
         should_pull = confirm_interrupted_artifact_pull(artifact_host_path)
         if not should_pull:
-            print(f'Artifacts remain on the device: {device_artifact_dir}')
+            for plan in artifact_plans:
+                print(f'Artifacts remain on the device ({plan.layer.name}): {plan.device_path}')
     if should_pull:
-        artifact_pull_failed = not pull_artifacts(conn, artifact_host_path, device_artifact_dir)
+        successful = []
+        for plan in artifact_plans:
+            if plan.handler.pull(conn, plan.host_path, plan.device_path):
+                successful.append(plan)
+            else:
+                artifact_pull_failed = True
         if capture_info:
             capture_info['capture']['artifact_status'] = 'pull_failed' if artifact_pull_failed else 'pulled'
-            save_capture_info(artifact_host_path, capture_info)
-        if not artifact_pull_failed and artifact_layer:
-            generate_shader_dump_report(artifact_layer, artifact_host_path)
+            save_artifact_info(artifact_host_path, artifact_plans, capture_info, save_capture_info)
+        for plan in successful:
+            plan.handler.report(plan.layer, plan.host_path)
     elif capture_info:
         capture_info['capture']['artifact_status'] = 'pull_skipped'
-        save_capture_info(artifact_host_path, capture_info)
+        save_artifact_info(artifact_host_path, artifact_plans, capture_info, save_capture_info)
 
     # Disable Perfetto trace
     if args.timeline_perfetto and perfetto_conf:

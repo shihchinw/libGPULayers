@@ -184,21 +184,37 @@ dump SPIR-V modules and pipeline metadata.
 
 When launched through `lgl_android_install.py --pull-artifact <host-directory>`,
 the installer honors `shader_dump.enable`. When enabled it redirects output to
-`/sdcard/Android/data/<package>/files/lgl-artifacts/shader-dump`. It then
+`/sdcard/Android/data/<package>/files/lgl-artifacts/shader-dump/session-<UUID>`.
+Each logical device writes into a unique `devices/device-<ID>/` subdirectory. It then
 pulls the shader data into a timestamped `<host-directory>/<YYYYMMDD_HHMMSS>_<package>`
 directory and automatically generates `shader_usage_report.html` there when
 capture finishes.
 
 `mode` controls output size. `compact` is the default and retains the three report
 inputs: `shaders/<SHA1>.spirv`, `pipelines/*.json`, and
-`tables/frame_pipeline_usage.csv` on the device. On the host, the installer places
-`frame_pipeline_usage.csv` and other raw CSV files directly in the capture directory,
-alongside the report and its CSV exports, omitting `shader-dump/`, `tables/`,
-and `summary/` wrappers. This is sufficient for SHA1 lookup, SPIR-V source
+`tables/frame_pipeline_usage.csv` inside each device directory. On the host, the
+installer moves raw CSV out of each device's `tables/` directory, keeping devices
+separate. The capture-root `shader_usage_report.html` automatically opens the only
+device report, or lists device reports when there are multiple devices. This is sufficient for SHA1 lookup, SPIR-V source
 conversion, pipeline executable analysis, CPU-side hotness, and debug label
 association. `detailed` additionally retains shader metadata JSON,
 `shaders.csv`, raw executable CSV tables, per-frame JSON, and debug object
 names for detailed capture diagnosis.
+
+Old device sessions are retained by default; ordinary capture performs no deletion.
+The generic `--reset-artifacts` option with `--pull-artifact` invokes reset only
+for selected, enabled artifact handlers. GPU Support's handler deletes the target
+package's old device-side shader-dump root before capture. This explicit flag requires no further
+prompt. The installer validates the selected device/package and canonical path,
+rejecting redirected directories; it does not delete host captures or sibling
+artifacts. External-storage reset uses ADB shell, not run-as, and never creates
+output directories as shell; the application creates its own output directories. Vulkan layer code never deletes files or directories. Legacy
+`shader_dump.clear_output` is no longer supported and is ignored in old configs.
+GPU Support's host implementation is in `scripts/android_artifacts.py`; the installer
+contains no shader-dump-specific config, reset, pull, report or progress logic.
+Only the current session is pulled. Capture metadata records its device output path.
+Offline report generation and `--convert-shader "*"` accept the session root and
+process device directories separately; original flat captures remain supported.
 
 The pipeline table defaults to descending command count and hides pipelines
 with no recorded commands or frames. Select `Show unused pipelines` to include

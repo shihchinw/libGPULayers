@@ -157,8 +157,6 @@ public:
     /** @brief True if shader dump should retain detailed diagnostic data. */
     bool shader_dump_detailed() const;
 
-    bool shader_dump_clear_output() const;
-
     /** @brief True if debug utils object names and labels should be captured. */
     bool shader_dump_capture_debug_utils() const;
 
@@ -331,7 +329,6 @@ private:
     /** @brief True if pipeline executable statistics should be captured. */
     bool conf_shader_dump_capture_statistics {true};
     bool conf_shader_dump_detailed {false};
-    bool conf_shader_dump_clear_output {false};
 
     /** @brief True if debug utils data should be captured. */
     bool conf_shader_dump_capture_debug_utils {true};

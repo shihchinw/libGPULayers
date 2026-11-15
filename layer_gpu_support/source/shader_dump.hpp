@@ -30,9 +30,11 @@ class ShaderDumpComms;
 class ShaderDump
 {
 public:
-    ShaderDump(const std::string& outputPath, bool clearOutput, bool frameSummary, uint32_t frameStart, uint32_t frameCount,
+    ShaderDump(const std::string& outputPath, bool frameSummary, uint32_t frameStart, uint32_t frameCount,
                bool detailed, ShaderDumpComms* comms);
     ~ShaderDump();
+
+    static std::string createDeviceOutputPath(const std::string& sessionPath);
 
     bool enabled() const;
 
