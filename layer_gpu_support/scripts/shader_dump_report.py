@@ -18,6 +18,7 @@ import shlex
 import shutil
 import struct
 import subprocess
+import tempfile
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import redirect_stdout
@@ -80,10 +81,19 @@ def percentile(values, value):
     return round(100 * sum(item <= value for item in values) / len(values)) if values else 0
 
 
-def read_pipelines(root):
+def read_pipelines(root, warnings=None):
     result = {}
     for path in sorted((root / 'pipelines').glob('*.json')):
-        data = json.loads(path.read_text(encoding='utf-8'))
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+            if not isinstance(data, dict):
+                raise ValueError('pipeline metadata must be an object')
+        except (OSError, ValueError) as error:
+            message = f'Skipped damaged pipeline metadata {path.name}: {error}'
+            print(f'WARNING: {message}')
+            if warnings is not None:
+                warnings.append(message)
+            continue
         key = sha(data.get('pipeline_signature', ''))
         if not key:
             continue
@@ -115,19 +125,42 @@ def usage_table_path(root):
     return current if current.exists() else root / 'usage_by_label.csv'
 
 
-def read_usage(root):
+def read_usage(root, warnings=None):
     result = defaultdict(lambda: {'draw_count': 0, 'dispatch_count': 0, 'trace_rays_count': 0, 'indirect_draw_command_count': 0,
                                   'frames': set(), 'labels': set()})
     path = usage_table_path(root)
     if not path.exists():
         return result
     with path.open(newline='', encoding='utf-8') as handle:
-        for row in csv.DictReader(handle):
+        def complete_lines():
+            for number, text in enumerate(handle, 1):
+                if not text.endswith('\n'):
+                    message = f'Skipped incomplete final line {path.name}:{number}'
+                    print(f'WARNING: {message}')
+                    if warnings is not None:
+                        warnings.append(message)
+                    continue
+                yield text
+        for line, row in enumerate(csv.DictReader(complete_lines()), 2):
+            try:
+                if None in row or any(value is None for value in row.values()):
+                    raise ValueError('incomplete CSV row')
+                counts = {field: int(row.get(field, 0) or 0) for field in
+                          ('draw_count', 'dispatch_count', 'trace_rays_count', 'indirect_draw_command_count')}
+                frame = int(row['frame']) if row.get('frame') else None
+                if any(value < 0 for value in counts.values()):
+                    raise ValueError('negative command count')
+            except ValueError as error:
+                message = f'Skipped damaged usage row {path.name}:{line}: {error}'
+                print(f'WARNING: {message}')
+                if warnings is not None:
+                    warnings.append(message)
+                continue
             item = result[sha(row.get('pipeline_signature', ''))]
-            for field in ('draw_count', 'dispatch_count', 'trace_rays_count', 'indirect_draw_command_count'):
-                item[field] += int(row.get(field, 0) or 0)
-            if row.get('frame'):
-                item['frames'].add(int(row['frame']))
+            for field, value in counts.items():
+                item[field] += value
+            if frame is not None:
+                item['frames'].add(frame)
             item['labels'].add(row.get('label_path') or '<unlabelled>')
     return result
 
@@ -138,13 +171,16 @@ def write_csv(path, fields, rows):
     writer.writeheader()
     writer.writerows(rows)
     content = buffer.getvalue()
-    if path.exists() and path.read_text(encoding='utf-8') == content.replace('\r\n', '\n'):
-        return
-    with path.open('w', newline='', encoding='utf-8') as handle:
-        handle.write(content)
+    encoded = content.encode('utf-8')
+    try:
+        if path.read_bytes() == encoded:
+            return
+    except OSError:
+        pass
+    atomic_write(path, encoded)
 
 
-def read_capture_info(root):
+def read_capture_info(root, usage=None):
     devices, warnings = [], []
     info = {'schema_version': 1}
     path = root / 'capture_info.json'
@@ -167,16 +203,14 @@ def read_capture_info(root):
         except (OSError, ValueError) as error:
             warnings.append(f'{path.name}: {error}')
     info.update(vulkan_devices=devices, warnings=warnings)
-    frames = set()
     usage_path = usage_table_path(root)
-    if usage_path.exists():
-        try:
-            with usage_path.open(newline='', encoding='utf-8') as handle:
-                for row in csv.DictReader(handle):
-                    if row.get('frame'):
-                        frames.add(int(row['frame']))
-        except (OSError, ValueError) as error:
-            warnings.append(f'Usage frame range: {error}')
+    try:
+        if usage is None:
+            usage = read_usage(root, warnings)
+        frames = {frame for item in usage.values() for frame in item['frames']}
+    except (OSError, ValueError) as error:
+        frames = set()
+        warnings.append(f'Usage frame range: {error}')
     info['recorded_usage'] = {
         'first_frame': min(frames) if frames else None,
         'last_frame': max(frames) if frames else None,
@@ -351,7 +385,7 @@ function toggleShaderStage(stage){activeShaderStages.has(stage)?activeShaderStag
 const kinds=[...new Set(D.pipelines.map(p=>p.kind))].sort(),activeKinds=new Set(kinds);let activeTab='pipelines',priorityOnly=false,showUnusedPipelines=false,showUnusedShaders=false,pipelineQuery='',shaderQuery='';function setTab(tab){activeTab=tab;render()}function toggleKind(kind){activeKinds.has(kind)?activeKinds.delete(kind):activeKinds.add(kind);if(!activeKinds.size)kinds.forEach(k=>activeKinds.add(k));render()}function togglePriority(){priorityOnly=!priorityOnly;render()}function toggleUnusedPipelines(value){showUnusedPipelines=value;render();$('#toolbar .unused-toggle')?.focus({preventScroll:true})}function setPipelineQuery(value){pipelineQuery=value;render(false)}function toggleUnusedShaders(){showUnusedShaders=!showUnusedShaders;render();$('#toolbar .unused-toggle')?.focus({preventScroll:true})}window.toggleUnusedShaders=toggleUnusedShaders;function setShaderQuery(value){shaderQuery=value;render(false)}function pipelineToolbar(){return `<span class="muted">Type:</span><span class="kind-group">${kinds.map(k=>`<button class="kind ${activeKinds.has(k)?'active '+kindClass(k):''}" onclick="toggleKind('${k}')">${esc(kindTitle(k))}</button>`).join('')}</span><button title="Show pipelines with pressure flags" class="priority ${priorityOnly?'active':''}" onclick="togglePriority()">With Pressure Flags</button>${helpLink('priority','Pressure Flags')}${unusedButton(showUnusedPipelines,'toggleUnusedPipelines(!showUnusedPipelines)')}<input value="${esc(pipelineQuery)}" oninput="setPipelineQuery(this.value)" placeholder="Search pipeline SHA / pass label">${tagFilters()}`}function shaderToolbar(){return `<span class="muted">Type:</span><span class="kind-group" role="group" aria-label="Shader Types">${shaderStages.map(stage=>`<button data-shader-stage="${esc(stage)}" class="kind ${activeShaderStages.has(stage)?'active '+kindClass(stage):''}" aria-pressed="${activeShaderStages.has(stage)}" onclick="toggleShaderStage('${stage}')">${esc(kindTitle(stage))}</button>`).join('')}</span>${unusedButton(showUnusedShaders,'toggleUnusedShaders()','Show Unused Shaders')}<input value="${esc(shaderQuery)}" oninput="setShaderQuery(this.value)" placeholder="Search shader SHA / entry point / stage">`}function render(updateToolbar=true){const active=D.pipelines.filter(used);$('#report-title').textContent=`${D.platform} Shader Profiling Report`;$('#status').innerHTML=`<div class="status-group"><span class="status-scope">Capture Totals</span><span><b>${n(D.shaders.length)}</b> shaders</span><span><b>${n(D.pipelines.length)}</b> pipelines</span><span><b>${n(D.statistics_count)}</b> raw statistics</span></div><div class="status-group"><span class="status-scope">Used Pipelines</span><span><b>${n(active.length)}</b> total</span><span>${typeTag('graphics')} <b>${n(active.filter(p=>p.kind==='graphics').length)}</b></span><span>${typeTag('compute')} <b>${n(active.filter(p=>p.kind==='compute').length)}</b></span></div>`;$('#tabs').innerHTML=`<button class="tab ${activeTab==='pipelines'?'active':''}" onclick="setTab('pipelines')">Pipelines</button><button class="tab ${activeTab==='shaders'?'active':''}" onclick="setTab('shaders')">Shaders</button><button class="tab ${activeTab==='help'?'active':''}" onclick="setTab('help')">Help</button><button class="tab ${activeTab==='info'?'active':''}" onclick="setTab('info')">Info</button>`;$('#toolbar').classList.toggle('hidden',activeTab==='help'||activeTab==='info');$('#results').classList.toggle('hidden',activeTab==='help'||activeTab==='info');if(activeTab==='pipelines'){const q=pipelineQuery.trim().toLowerCase().replace(/^sha1:/,''),match=p=>!q||JSON.stringify(p).toLowerCase().includes(q);let rows=D.pipelines.filter(p=>activeKinds.has(p.kind)&&(showUnusedPipelines||p.command_count>0||p.active_frames>0)&&match(p));if(priorityOnly)rows=rows.filter(p=>p.pressures.length);if(selectedTags.size)rows=rows.filter(p=>p.pressures.some(tag=>selectedTags.has(tag)));if(updateToolbar)$('#toolbar').innerHTML=pipelineToolbar();$('#results').textContent=`Showing ${n(rows.length)} / ${n(D.pipelines.length)} pipelines`;$('#content').innerHTML=triage(rows,'Pipelines')}else if(activeTab==='info'){$('#content').innerHTML=infoPage()}else if(activeTab==='help'){$('#content').innerHTML=helpPage()}else{const q=shaderQuery.trim().toLowerCase().replace(/^sha1:/,''),rows=D.shaders.filter(s=>s.uses.some(u=>activeShaderStages.has(u.stage))&&(showUnusedShaders||s.pipeline_command_count>0)&&(!q||JSON.stringify(s).toLowerCase().includes(q)));if(updateToolbar)$('#toolbar').innerHTML=shaderToolbar();$('#results').textContent=`Showing ${n(rows.length)} / ${n(D.shaders.length)} shaders`;$('#content').innerHTML=shaderTable(rows)}}window.setTab=setTab;window.toggleKind=toggleKind;window.togglePriority=togglePriority;window.toggleUnusedPipelines=toggleUnusedPipelines;window.setPipelineQuery=setPipelineQuery;window.setShaderQuery=setShaderQuery;render();
 </script></body></html>'''
     document = document.replace('../shaders/', '${D.shader_base}/')
-    path.write_text(document.replace('__DATA__', data), encoding='utf-8')
+    atomic_write(path, document.replace('__DATA__', data).encode('utf-8'))
 
 
 def conversion_command(root):
@@ -387,6 +421,33 @@ def spirv_entries(source):
     return entries
 
 
+def atomic_write(path, data):
+    """Publish complete host-side output; preserve an existing file on failure."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name + '.tmp.', delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(data)
+            stream.flush()
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def conversion_cache_valid(target, key):
+    try:
+        metadata = json.loads(target.with_suffix(target.suffix + '.meta.json').read_text(encoding='utf-8'))
+        output = target.read_bytes()
+        if key.get('tool') is None:
+            # Existing verified output remains usable when the converter has
+            # been uninstalled; other inputs/options must still match exactly.
+            key = dict(key, tool=metadata['key'].get('tool'))
+        return bool(output.strip()) and metadata['key'] == key and metadata['output_sha256'] == hashlib.sha256(output).hexdigest()
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def convert_shader(root, shader_id, formats, force=False, cross='spirv-cross', dis='spirv-dis', source_path=None):
     shader_id = sha(shader_id).lower()
     if not re.fullmatch(r'[0-9a-f]{40}', shader_id):
@@ -397,6 +458,7 @@ def convert_shader(root, shader_id, formats, force=False, cross='spirv-cross', d
     if not source.exists():
         raise ValueError(f'SPIR-V not found: {source}')
     entries = spirv_entries(source)
+    source_digest = hashlib.sha256(source.read_bytes()).hexdigest()
     output = root / 'shader_sources'
     output.mkdir(parents=True, exist_ok=True)
     failures = []
@@ -411,11 +473,21 @@ def convert_shader(root, shader_id, formats, force=False, cross='spirv-cross', d
                 tag = hashlib.sha1(entry.encode()).hexdigest()[:8]
                 suffix = f'.{stage or "unknown"}.{safe}-{tag}'
             target = output / f'{shader_id}{suffix}.{fmt}'
-            if target.exists() and not force:
-                print(f'Cached: {target}')
-                continue
             tool = dis if fmt == 'spvasm' else cross
             executable = shutil.which(tool)
+            tool_identity = executable
+            if executable:
+                try:
+                    info = Path(executable).stat()
+                    tool_identity = [str(Path(executable).resolve()), info.st_size, info.st_mtime_ns]
+                except OSError:
+                    pass
+            key = {'schema': 1, 'source_sha256': source_digest, 'format': fmt,
+                   'entry_point': entry, 'stage': stage, 'tool': tool_identity, 'tool_request': tool,
+                   'options': ['vulkan-semantics'] if fmt == 'glsl' else ['shader-model', '60'] if fmt == 'hlsl' else []}
+            if not force and conversion_cache_valid(target, key):
+                print(f'Cached: {target}')
+                continue
             if not executable:
                 failures.append(f'{fmt}: {tool} not found; add Vulkan SDK Bin to PATH or specify --spirv-cross / --spirv-dis')
                 continue
@@ -432,7 +504,9 @@ def convert_shader(root, shader_id, formats, force=False, cross='spirv-cross', d
                     message = result.stderr.decode('utf-8', errors='replace').strip()
                     failures.append(f'{target.name}: {message or "conversion produced no output"}')
                     continue
-                target.write_bytes(result.stdout)
+                atomic_write(target, result.stdout)
+                metadata = {'key': key, 'output_sha256': hashlib.sha256(result.stdout).hexdigest()}
+                atomic_write(target.with_suffix(target.suffix + '.meta.json'), json.dumps(metadata).encode('utf-8'))
                 print(f'Wrote: {target}')
             except (OSError, subprocess.TimeoutExpired) as error:
                 failures.append(f'{target.name}: {error}')
@@ -545,7 +619,8 @@ def main():
         # Windows cannot express relative links across drive letters.
         shader_base = (root / 'shaders').resolve().as_uri()
     output.mkdir(parents=True, exist_ok=True)
-    pipelines, usage = read_pipelines(root), read_usage(root)
+    report_warnings = []
+    pipelines, usage = read_pipelines(root, report_warnings), read_usage(root, report_warnings)
     mali = any(stat.get('name') == 'Spill size'
                for pipeline in pipelines.values() for executable in pipeline['executables']
                for stat in executable.get('statistics', []))
@@ -653,8 +728,9 @@ def main():
     write_html(output / 'shader_usage_report.html', {'pipelines': rows, 'shaders': shaders, 'links': links, 'statistics': stats,
                                        'pipeline_instances': [instance for group in pipelines.values() for instance in group['instances']],
                                        'shader_base': shader_base, 'conversion_command': conversion_command(root),
-                                       'capture_info': read_capture_info(root),
+                                       'capture_info': read_capture_info(root, usage),
                                        'report_generation': {
+                                           'warnings': report_warnings,
                                            'generated_at': datetime.now().astimezone().isoformat(timespec='milliseconds'),
                                            'generator_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
                                        'statistics_count': len(stats_csv), 'graphics': sum(x['kind'] == 'graphics' for x in rows),

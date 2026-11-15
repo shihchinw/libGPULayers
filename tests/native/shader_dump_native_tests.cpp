@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "deferred_pipeline.hpp"
 #include "shader_dump.hpp"
+#include "shader_dump_io.hpp"
 #include "device.hpp"
 #include "layer_device_functions.hpp"
 #include "layer_comms.hpp"
@@ -226,11 +227,60 @@ static void testDrawHooks()
     std::cout<<"PASS 21 graphics draw hooks, forwarding, CPU counts and 16 indirect commands\n";
 }
 
+static void testAtomicOutputAndFailure()
+{
+    const auto root = std::filesystem::temp_directory_path() /
+        ("lgl-io-test-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::filesystem::create_directories(root);
+    const auto target = root / "shader.spirv";
+    require(ShaderDumpIO::writeAtomic(target, "good"), "initial atomic write failed");
+    require(ShaderDumpIO::writeAtomic(target, "replacement"), "atomic replacement failed");
+    require(ShaderDumpIO::matchesFile(target, "replacement", 11), "published bytes differ");
+    require(!ShaderDumpIO::matchesFile(target, "corrupt!!!!", 11), "same-size corruption accepted");
+    const auto blocked = root / "blocked";
+    std::filesystem::create_directory(blocked);
+    require(!ShaderDumpIO::writeAtomic(blocked, "cannot publish"), "publish to directory succeeded");
+    const auto table = root / "usage.csv";
+    require(ShaderDumpIO::appendTable(table, "a,b\n", "1,2\n"), "initial table failed");
+    require(!ShaderDumpIO::appendTable(table, "a,b,c\n", "3,4,5\n"), "schema mismatch accepted");
+    { std::ofstream stream(table, std::ios::app); stream << "torn"; }
+    require(!ShaderDumpIO::appendTable(table, "a,b\n", "3,4\n"), "incomplete table accepted");
+
+    // A preexisting corrupt binary is repaired, not accepted solely by filename.
+    ShaderDump dump((root / "capture").string(), false, true, 0, 0, false, nullptr);
+    const uint32_t code[] = {0x07230203, 0x10000, 0, 1, 0};
+    dump.recordShaderModule(reinterpret_cast<VkShaderModule>(uintptr_t(1)), code, 5, code, 5);
+    std::filesystem::path binary;
+    for (const auto& entry : std::filesystem::directory_iterator(root / "capture" / "shaders"))
+        if (entry.path().extension() == ".spirv") binary = entry.path();
+    require(!binary.empty(), "SPIR-V not published");
+    { std::ofstream stream(binary, std::ios::binary | std::ios::trunc); stream << "broken"; }
+    ShaderDump repair((root / "capture").string(), false, true, 0, 0, false, nullptr);
+    repair.recordShaderModule(reinterpret_cast<VkShaderModule>(uintptr_t(1)), code, 5, code, 5);
+    require(ShaderDumpIO::matchesFile(binary, reinterpret_cast<const char*>(code), sizeof(code)), "truncated SPIR-V was cached");
+    // A failed publication disables capture instead of reporting further success.
+    std::filesystem::create_directory(root / "capture" / "pipelines" / "block");
+    const auto frameTable = root / "capture" / "tables" / "frame_pipeline_usage.csv";
+    { std::ofstream stream(frameTable); stream << "old,schema\n"; }
+    VkGraphicsPipelineCreateInfo create {};
+    create.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    auto pipeline = reinterpret_cast<VkPipeline>(uintptr_t(3));
+    DeviceDispatchTable driver {};
+    repair.recordGraphicsPipeline(VK_NULL_HANDLE, driver, pipeline, create, false);
+    auto cb = reinterpret_cast<VkCommandBuffer>(uintptr_t(4));
+    repair.beginCommandBuffer(cb); repair.bindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    repair.recordDraw(cb); repair.endFrame();
+    require(!repair.enabled(), "output failure did not disable collection");
+    std::filesystem::remove_all(root); // host-created test directory only
+    std::cout << "PASS atomic publication, binary repair, schema/torn-write rejection and failure isolation\n";
+}
+
 int main()
 {
     try {
         testDeferredOwnershipAndCompletion();
         testDrawHooks();
+        testAtomicOutputAndFailure();
         std::cout << "PASS deferred ownership, pending/error paths, concurrent exactly-once completion\n";
         return 0;
     } catch (const std::exception& error) {

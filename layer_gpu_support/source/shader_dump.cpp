@@ -5,6 +5,7 @@
  */
 
 #include "shader_dump.hpp"
+#include "shader_dump_io.hpp"
 
 #include "framework/device_dispatch_table.hpp"
 #include "framework/instance_dispatch_table.hpp"
@@ -156,11 +157,13 @@ ShaderDump::ShaderDump(const std::string& outputPath_, bool clearOutput, bool fr
     if (clearOutput)
     {
         std::filesystem::remove_all(outputPath, error);
-        error.clear();
+        if (error) { writeFailure("legacy output reset"); return; }
     }
-    std::filesystem::create_directories(std::filesystem::path(outputPath) / "shaders", error);
-    std::filesystem::create_directories(std::filesystem::path(outputPath) / "pipelines", error);
-    std::filesystem::create_directories(std::filesystem::path(outputPath) / "tables", error);
+    for (const char* directory : {"shaders", "pipelines", "tables"})
+    {
+        std::filesystem::create_directories(std::filesystem::path(outputPath) / directory, error);
+        if (error) break;
+    }
     active = !error;
     if (!active)
     {
@@ -182,8 +185,15 @@ ShaderDump::~ShaderDump()
 
 bool ShaderDump::enabled() const { return active; }
 
+void ShaderDump::writeFailure(const char* operation) noexcept
+{
+    active = false;
+    LAYER_ERR("Shader dump stopped after output failure (%s): %s", operation, outputPath.c_str());
+}
+
 void ShaderDump::recordDeviceInfo(VkPhysicalDevice physicalDevice, const InstanceDispatchTable& driver,
                                  uint32_t applicationApiVersion, bool executableInfoEnabled)
+try
 {
     if (!active) return;
 
@@ -242,53 +252,65 @@ void ShaderDump::recordDeviceInfo(VkPhysicalDevice physicalDevice, const Instanc
                                                             "Vulkan 1.2 / VK_KHR_driver_properties unavailable";
 
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     auto directory = std::filesystem::path(outputPath) / "metadata";
     std::error_code error;
     std::filesystem::create_directories(directory, error);
     // Separate files retain information for different physical devices.
     auto path = directory / ("vulkan-" + std::to_string(reinterpret_cast<uintptr_t>(physicalDevice)) + ".json");
-    std::ofstream stream(path);
-    stream << info.dump(2) << '\n';
-    if (error || !stream) LAYER_ERR("Failed to write Vulkan capture metadata: %s", path.string().c_str());
+    if (error || !ShaderDumpIO::writeAtomic(path, info.dump(2) + '\n')) writeFailure("device metadata");
+} catch (const std::exception& error)
+{
+    writeFailure(error.what());
 }
+
 
 void ShaderDump::recordShaderModule(VkShaderModule shaderModule,
                                     const uint32_t* code,
                                     size_t codeWords,
                                     const uint32_t* originalCode,
                                     size_t originalCodeWords)
+try
 {
     if (!active || !code || !codeWords) return;
     const size_t byteSize = codeWords * sizeof(uint32_t);
     const std::string hash = sha1(code, byteSize);
     const std::filesystem::path base = std::filesystem::path(outputPath) / "shaders" / hash;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     shaderModules[reinterpret_cast<uintptr_t>(shaderModule)] = hash;
-    const bool newShader = !std::filesystem::exists(base.string() + ".spirv");
-    if (newShader)
+    if (persistedShaders.contains(hash)) return;
+    const auto* bytes = reinterpret_cast<const char*>(code);
+    if (!ShaderDumpIO::matchesFile(base.string() + ".spirv", bytes, byteSize) &&
+        !ShaderDumpIO::writeAtomic(base.string() + ".spirv", bytes, byteSize))
     {
-        std::ofstream spirv(base.string() + ".spirv", std::ios::binary);
-        spirv.write(reinterpret_cast<const char*>(code), static_cast<std::streamsize>(byteSize));
-        if (detailed)
-        {
-            json metadata {
-                {"schema_version", 1}, {"shader_id", "sha1:" + hash}, {"byte_size", byteSize},
-                {"format", "spirv"}, {"original_sha1", sha1(originalCode, originalCodeWords * sizeof(uint32_t))},
-                {"effective_sha1", hash}
-            };
-            std::ofstream jsonFile(base.string() + ".json");
-            jsonFile << metadata.dump(2) << '\n';
-
-            const std::filesystem::path table = std::filesystem::path(outputPath) / "tables" / "shaders.csv";
-            const bool newTable = !std::filesystem::exists(table);
-            std::ofstream csvFile(table, std::ios::app);
-            if (newTable) csvFile << "shader_sha1,byte_size,format\n";
-            csvFile << csv(hash) << ',' << byteSize << ",spirv\n";
-        }
-        ++shaderCount;
-        publishProgress();
+        writeFailure("SPIR-V");
+        return;
     }
+    if (detailed)
+    {
+        json metadata {
+            {"schema_version", 1}, {"shader_id", "sha1:" + hash}, {"byte_size", byteSize},
+            {"format", "spirv"}, {"original_sha1", sha1(originalCode, originalCodeWords * sizeof(uint32_t))},
+            {"effective_sha1", hash}
+        };
+        const auto table = std::filesystem::path(outputPath) / "tables" / "shaders.csv";
+        if (!ShaderDumpIO::writeAtomic(base.string() + ".json", metadata.dump(2) + '\n') ||
+            !ShaderDumpIO::appendTable(table, "shader_sha1,byte_size,format\n",
+                                      csv(hash) + ',' + std::to_string(byteSize) + ",spirv\n"))
+        {
+            writeFailure("shader metadata");
+            return;
+        }
+    }
+    persistedShaders.insert(hash);
+    ++shaderCount;
+    publishProgress();
+} catch (const std::exception& error)
+{
+    writeFailure(error.what());
 }
+
 
 std::string ShaderDump::lookupShader(VkShaderModule shaderModule) const
 {
@@ -316,9 +338,11 @@ void ShaderDump::recordRayTracingPipeline(VkDevice device, const DeviceDispatchT
 
 void ShaderDump::recordPipeline(VkDevice device, const DeviceDispatchTable& driver, VkPipeline pipeline, const char* kind,
                                 const VkPipelineShaderStageCreateInfo* stages, uint32_t stageCount, bool captureStatistics)
+try
 {
     if (!active || pipeline == VK_NULL_HANDLE) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     json shaderList = json::array();
     std::string signatureSource {kind};
     for (uint32_t i = 0; i < stageCount; ++i)
@@ -384,28 +408,18 @@ void ShaderDump::recordPipeline(VkDevice device, const DeviceDispatchTable& driv
 
     const auto filename = std::filesystem::path(outputPath) / "pipelines" /
                           (signature + "-" + std::to_string(instanceId) + ".json");
-    std::ofstream file(filename);
-    file << report.dump(2) << '\n';
+    if (!ShaderDumpIO::writeAtomic(filename, report.dump(2) + '\n'))
+    {
+        writeFailure("pipeline JSON");
+        return;
+    }
 
     if (detailed)
     {
         const std::filesystem::path executableTable = std::filesystem::path(outputPath) / "tables" /
                                                       "pipeline_executables.csv";
-        const bool newExecutableTable = !std::filesystem::exists(executableTable);
-        std::ofstream executableCsv(executableTable, std::ios::app);
-        if (newExecutableTable)
-        {
-            executableCsv << "pipeline_instance_id,pipeline_signature,kind,executable_index,name,description,stages,subgroup_size,capture_status\n";
-        }
-
-        const std::filesystem::path statisticTable = std::filesystem::path(outputPath) / "tables" / "statistics_raw.csv";
-        const bool newStatisticTable = !std::filesystem::exists(statisticTable);
-        std::ofstream statisticCsv(statisticTable, std::ios::app);
-        if (newStatisticTable)
-        {
-            statisticCsv << "pipeline_instance_id,pipeline_signature,executable_index,name,description,format,value\n";
-        }
-
+        std::ostringstream executableCsv, statisticCsv;
+        const auto statisticTable = std::filesystem::path(outputPath) / "tables" / "statistics_raw.csv";
         for (const auto& executable : report["executables"])
         {
             executableCsv << instanceId << ',' << csv(signature) << ',' << csv(kind) << ',' << executable["index"] << ','
@@ -419,15 +433,28 @@ void ShaderDump::recordPipeline(VkDevice device, const DeviceDispatchTable& driv
                              << statistic["format"] << ',' << csv(statistic["value"]) << '\n';
             }
         }
+        if (!ShaderDumpIO::appendTable(executableTable,
+                "pipeline_instance_id,pipeline_signature,kind,executable_index,name,description,stages,subgroup_size,capture_status\n", executableCsv.str()) ||
+            !ShaderDumpIO::appendTable(statisticTable,
+                "pipeline_instance_id,pipeline_signature,executable_index,name,description,format,value\n", statisticCsv.str()))
+        {
+            writeFailure("pipeline tables");
+            return;
+        }
     }
     ++pipelineCount;
     publishProgress();
+} catch (const std::exception& error)
+{
+    writeFailure(error.what());
 }
+
 
 void ShaderDump::beginCommandBuffer(VkCommandBuffer commandBuffer)
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)] = {};
 }
 
@@ -435,6 +462,7 @@ void ShaderDump::bindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)].boundPipelines[bindPoint] = reinterpret_cast<uintptr_t>(pipeline);
 }
 
@@ -442,6 +470,7 @@ void ShaderDump::beginLabel(VkCommandBuffer commandBuffer, const VkDebugUtilsLab
 {
     if (!active || !label.pLabelName) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)].labels.emplace_back(label.pLabelName);
 }
 
@@ -449,6 +478,7 @@ void ShaderDump::endLabel(VkCommandBuffer commandBuffer)
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     auto& labels = commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)].labels;
     if (!labels.empty()) labels.pop_back();
 }
@@ -480,6 +510,7 @@ void ShaderDump::recordDraw(VkCommandBuffer commandBuffer, bool indirect)
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     recordUsage(commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)], pipelines, frameUsage,
                 VK_PIPELINE_BIND_POINT_GRAPHICS, 0, indirect);
 }
@@ -488,6 +519,7 @@ void ShaderDump::recordDispatch(VkCommandBuffer commandBuffer)
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     recordUsage(commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)], pipelines, frameUsage,
                 VK_PIPELINE_BIND_POINT_COMPUTE, 1);
 }
@@ -496,14 +528,17 @@ void ShaderDump::recordTraceRays(VkCommandBuffer commandBuffer)
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     recordUsage(commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)], pipelines, frameUsage,
                 VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, 2);
 }
 
 void ShaderDump::recordObjectName(const VkDebugUtilsObjectNameInfoEXT& nameInfo)
+try
 {
     if (!active || !detailed || !nameInfo.pObjectName) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     std::string objectId;
     if (nameInfo.objectType == VK_OBJECT_TYPE_SHADER_MODULE)
     {
@@ -518,17 +553,21 @@ void ShaderDump::recordObjectName(const VkDebugUtilsObjectNameInfoEXT& nameInfo)
     if (objectId.empty()) return;
 
     const std::filesystem::path table = std::filesystem::path(outputPath) / "tables" / "debug_object_names.csv";
-    const bool newTable = !std::filesystem::exists(table);
-    std::ofstream file(table, std::ios::app);
-    if (newTable) file << "object_type,object_id,debug_name\n";
-    file << csv(nameInfo.objectType == VK_OBJECT_TYPE_PIPELINE ? "pipeline" : "shader_module") << ','
-         << csv(objectId) << ',' << csv(nameInfo.pObjectName) << '\n';
+    const auto row = csv(nameInfo.objectType == VK_OBJECT_TYPE_PIPELINE ? "pipeline" : "shader_module") + ',' +
+                     csv(objectId) + ',' + csv(nameInfo.pObjectName) + '\n';
+    if (!ShaderDumpIO::appendTable(table, "object_type,object_id,debug_name\n", row)) writeFailure("object names");
+} catch (const std::exception& error)
+{
+    writeFailure(error.what());
 }
 
+
 void ShaderDump::endFrame()
+try
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
+    if (!active) return;
     ++frameNumber;
     const uint64_t firstFrame = firstCapturedFrame ? firstCapturedFrame : 1;
     const bool insideCaptureWindow = writeFrameSummary && frameNumber >= firstFrame &&
@@ -541,20 +580,18 @@ void ShaderDump::endFrame()
     if (frameUsage.empty()) return;
 
     json report;
-    std::ofstream file;
+    std::filesystem::path frameFile;
     if (detailed)
     {
-        const std::filesystem::path frameFile = std::filesystem::path(outputPath) / "frames" /
+        frameFile = std::filesystem::path(outputPath) / "frames" /
                                                 (std::to_string(frameNumber) + ".json");
         std::error_code error;
         std::filesystem::create_directories(frameFile.parent_path(), error);
+        if (error) { writeFailure("frame directory"); return; }
         report = {{"schema_version", 1}, {"frame", frameNumber}, {"usage", json::array()}};
-        file.open(frameFile);
     }
     const std::filesystem::path table = std::filesystem::path(outputPath) / "tables" / "frame_pipeline_usage.csv";
-    const bool newTable = !std::filesystem::exists(table);
-    std::ofstream csvFile(table, std::ios::app);
-    if (newTable) csvFile << "frame,pipeline_signature,label_path,draw_count,dispatch_count,trace_rays_count,indirect_draw_command_count\n";
+    std::ostringstream csvFile;
     for (const auto& [key, usage] : frameUsage)
     {
         const size_t separator = key.find('\x1f');
@@ -569,14 +606,21 @@ void ShaderDump::endFrame()
         csvFile << frameNumber << ',' << csv(signature) << ',' << csv(label) << ',' << usage.draws << ','
                 << usage.dispatches << ',' << usage.traceRays << ',' << usage.indirectDrawCommands << '\n';
     }
-    if (detailed)
+    if ((detailed && !ShaderDumpIO::writeAtomic(frameFile, report.dump(2) + '\n')) ||
+        !ShaderDumpIO::appendTable(table,
+            "frame,pipeline_signature,label_path,draw_count,dispatch_count,trace_rays_count,indirect_draw_command_count\n", csvFile.str()))
     {
-        file << report.dump(2) << '\n';
+        writeFailure("frame output (schema mismatch, incomplete file or I/O error)");
+        return;
     }
     ++writtenFrameCount;
     publishProgress();
     frameUsage.clear();
+} catch (const std::exception& error)
+{
+    writeFailure(error.what());
 }
+
 
 void ShaderDump::publishProgress(bool force)
 {

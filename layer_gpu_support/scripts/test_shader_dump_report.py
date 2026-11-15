@@ -21,6 +21,38 @@ def module(*entries):
 
 
 class ShaderConversionTests(unittest.TestCase):
+    def test_atomic_publish_failure_preserves_previous_output(self):
+        target = self.root / 'previous.glsl'
+        target.write_bytes(b'previous complete output')
+        with patch.object(report.os, 'replace', side_effect=OSError('disk unavailable')):
+            with self.assertRaises(OSError):
+                report.atomic_write(target, b'replacement')
+        self.assertEqual(target.read_bytes(), b'previous complete output')
+        self.assertEqual(list(self.root.glob('*.tmp.*')), [])
+
+    @patch.object(report.shutil, 'which', return_value='test-converter')
+    @patch.object(report.subprocess, 'run')
+    def test_corrupted_output_and_changed_input_invalidate_cache(self, run, which):
+        run.return_value = subprocess.CompletedProcess([], 0, b'complete code', b'')
+        report.convert_shader(self.root, self.shader_id, ['glsl'])
+        output = self.root / 'shader_sources' / f'{self.shader_id}.glsl'
+        output.write_bytes(b'truncated')
+        report.convert_shader(self.root, self.shader_id, ['glsl'])
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(output.read_bytes(), b'complete code')
+        self.source.write_bytes(module((4, 'differentEntry')))
+        report.convert_shader(self.root, self.shader_id, ['glsl'])
+        self.assertEqual(run.call_count, 3)
+
+    @patch.object(report.subprocess, 'run')
+    def test_verified_cached_conversion_does_not_require_installed_tool(self, run):
+        run.return_value = subprocess.CompletedProcess([], 0, b'complete code', b'')
+        with patch.object(report.shutil, 'which', return_value='test-converter'):
+            report.convert_shader(self.root, self.shader_id, ['glsl'])
+        with patch.object(report.shutil, 'which', return_value=None):
+            report.convert_shader(self.root, self.shader_id, ['glsl'])
+        self.assertEqual(run.call_count, 1)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -63,7 +95,7 @@ class ShaderConversionTests(unittest.TestCase):
         self.source.with_suffix('.spv').write_bytes(module((0, 'main'), (4, 'main')))
         run.return_value = subprocess.CompletedProcess([], 0, b'code', b'')
         report.convert_shader(self.root, self.shader_id, ['glsl', 'spvasm'])
-        names = [p.name for p in (self.root / 'shader_sources').iterdir()]
+        names = [p.name for p in (self.root / 'shader_sources').iterdir() if p.suffix in ('.glsl', '.spvasm')]
         self.assertEqual(len(names), 3)
         self.assertTrue(any('.vert.main-' in name for name in names))
         self.assertTrue(any('.frag.main-' in name for name in names))

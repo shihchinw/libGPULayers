@@ -8,9 +8,11 @@
 
 #include <cstdint>
 #include <chrono>
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -81,11 +83,13 @@ private:
                         uint32_t stageCount,
                         bool captureStatistics);
     void publishProgress(bool force = false);
+    void writeFailure(const char* operation) noexcept;
 
     std::string outputPath;
-    bool active {false};
+    std::atomic<bool> active {false};
     mutable std::mutex lock;
     std::unordered_map<uint64_t, std::string> shaderModules;
+    std::unordered_set<std::string> persistedShaders;
     std::unordered_map<uintptr_t, std::string> pipelines;
 
 public:

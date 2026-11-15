@@ -307,6 +307,18 @@ Results are saved under `<capture-directory>/shader_sources/<SHA1>.glsl`,
 `.hlsl`, and `.spvasm`. Modules with multiple entry points get separate GLSL/HLSL
 files with stage and entry-point suffixes. Existing files are reused; `--force`
 regenerates them. Both `.spirv` and `.spv` binary inputs are accepted.
+Conversions are atomically published with adjacent `.meta.json` cache records
+covering input/output hashes, tool identity and conversion options. Legacy results
+without cache metadata are regenerated once. Corrupt outputs invalidate the cache;
+verified cached outputs remain usable if the converter is subsequently unavailable.
+
+The layer atomically publishes SPIR-V and JSON artifacts and checks CSV append
+results. Failed output disables further collection and emits a log error rather
+than counting unwritten artifacts. CSV schema mismatches and unfinished tails are
+rejected; do not append new-format capture data to an old-format usage table.
+CSV append is not a power-loss transaction. Offline reports skip damaged pipeline
+JSON and incomplete/invalid usage records with warnings, retaining valid records.
+Failed layer temporary files are retained for host-side recovery/cleanup.
 
 For frequent code browsing, pass `"*"` instead of a SHA1 to convert all shaders
 once before returning to the report (quote `*` to prevent shell wildcard expansion):

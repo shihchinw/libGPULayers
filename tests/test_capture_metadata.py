@@ -13,6 +13,23 @@ from lglpy.android import capture
 
 
 class CaptureMetadataTests(unittest.TestCase):
+    def test_damaged_pipeline_and_partial_usage_do_not_discard_good_records(self):
+        spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
+        report = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(report)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'pipelines').mkdir()
+            (root / 'pipelines' / 'good.json').write_text('{"pipeline_signature":"abc"}')
+            (root / 'pipelines' / 'damaged.json').write_text('{"pipeline_signature":')
+            (root / 'frame_pipeline_usage.csv').write_text(
+                'frame,pipeline_signature,label_path,draw_count\n1,abc,Pass,3\n2,abc,Pass,\n3,abc')
+            warnings = []
+            self.assertEqual(list(report.read_pipelines(root, warnings)), ['abc'])
+            usage = report.read_usage(root, warnings)
+            self.assertEqual(usage['abc']['draw_count'], 3)
+            self.assertEqual(len(warnings), 2)
+
     def test_indirect_commands_are_a_subset_of_cpu_draw_calls(self):
         spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
         report = importlib.util.module_from_spec(spec)
