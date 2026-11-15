@@ -13,6 +13,21 @@ from lglpy.android import capture
 
 
 class CaptureMetadataTests(unittest.TestCase):
+    def test_indirect_commands_are_a_subset_of_cpu_draw_calls(self):
+        spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
+        report = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(report)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'frame_pipeline_usage.csv').write_text(
+                'frame,pipeline_signature,label_path,draw_count,dispatch_count,trace_rays_count,indirect_draw_command_count\n'
+                '1,abc,Pass,21,0,0,16\n')
+            usage = report.read_usage(root)['abc']
+            self.assertEqual(usage['draw_count'], 21)
+            self.assertEqual(usage['indirect_draw_command_count'], 16)
+            (root / 'frame_pipeline_usage.csv').write_text('frame,pipeline_signature,draw_count\n1,abc,3\n')
+            self.assertEqual(report.read_usage(root)['abc']['indirect_draw_command_count'], 0)
+
     def test_pipeline_instances_keep_distinct_executable_statistics(self):
         spec = importlib.util.spec_from_file_location('shader_report', 'layer_gpu_support/scripts/shader_dump_report.py')
         report = importlib.util.module_from_spec(spec)

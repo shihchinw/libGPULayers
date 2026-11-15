@@ -83,6 +83,138 @@ template<>
 VKAPI_ATTR VkResult VKAPI_CALL layer_vkQueuePresentKHR<user_tag>(VkQueue queue,
                                                                   const VkPresentInfoKHR* pPresentInfo);
 
+
+// All additional graphics draw entrypoints supported by the framework.
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirect<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    uint32_t drawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirect2KHR<user_tag>(VkCommandBuffer commandBuffer,
+    const VkDrawIndirect2InfoKHR* pInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirectCount<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    VkBuffer countBuffer,
+    VkDeviceSize countBufferOffset,
+    uint32_t maxDrawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirectCount2KHR<user_tag>(VkCommandBuffer commandBuffer,
+    const VkDrawIndirectCount2InfoKHR* pInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndexedIndirectCountKHR<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    VkBuffer countBuffer,
+    VkDeviceSize countBufferOffset,
+    uint32_t maxDrawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirect<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    uint32_t drawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirect2KHR<user_tag>(VkCommandBuffer commandBuffer,
+    const VkDrawIndirect2InfoKHR* pInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectByteCount2EXT<user_tag>(VkCommandBuffer commandBuffer,
+    uint32_t instanceCount,
+    uint32_t firstInstance,
+    const VkBindTransformFeedbackBuffer2InfoEXT* pCounterInfo,
+    uint32_t counterOffset,
+    uint32_t vertexStride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectByteCountEXT<user_tag>(VkCommandBuffer commandBuffer,
+    uint32_t instanceCount,
+    uint32_t firstInstance,
+    VkBuffer counterBuffer,
+    VkDeviceSize counterBufferOffset,
+    uint32_t counterOffset,
+    uint32_t vertexStride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectCount<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    VkBuffer countBuffer,
+    VkDeviceSize countBufferOffset,
+    uint32_t maxDrawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectCount2KHR<user_tag>(VkCommandBuffer commandBuffer,
+    const VkDrawIndirectCount2InfoKHR* pInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawIndirectCountKHR<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    VkBuffer countBuffer,
+    VkDeviceSize countBufferOffset,
+    uint32_t maxDrawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksEXT<user_tag>(VkCommandBuffer commandBuffer,
+    uint32_t groupCountX,
+    uint32_t groupCountY,
+    uint32_t groupCountZ);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksIndirect2EXT<user_tag>(VkCommandBuffer commandBuffer,
+    const VkDrawIndirect2InfoKHR* pInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksIndirectCount2EXT<user_tag>(VkCommandBuffer commandBuffer,
+    const VkDrawIndirectCount2InfoKHR* pInfo);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksIndirectCountEXT<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    VkBuffer countBuffer,
+    VkDeviceSize countBufferOffset,
+    uint32_t maxDrawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMeshTasksIndirectEXT<user_tag>(VkCommandBuffer commandBuffer,
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    uint32_t drawCount,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMultiEXT<user_tag>(VkCommandBuffer commandBuffer,
+    uint32_t drawCount,
+    const VkMultiDrawInfoEXT* pVertexInfo,
+    uint32_t instanceCount,
+    uint32_t firstInstance,
+    uint32_t stride);
+
+template<>
+VKAPI_ATTR void VKAPI_CALL layer_vkCmdDrawMultiIndexedEXT<user_tag>(VkCommandBuffer commandBuffer,
+    uint32_t drawCount,
+    const VkMultiDrawIndexedInfoEXT* pIndexInfo,
+    uint32_t instanceCount,
+    uint32_t firstInstance,
+    uint32_t stride,
+    const int32_t* pVertexOffset);
+
 // Functions for render passes
 
 /* See Vulkan API for documentation. */

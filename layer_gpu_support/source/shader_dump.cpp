@@ -457,7 +457,7 @@ static void recordUsage(ShaderDump::CommandBufferState& state,
                         const std::unordered_map<uintptr_t, std::string>& pipelines,
                         std::unordered_map<std::string, ShaderDump::Usage>& frameUsage,
                         VkPipelineBindPoint bindPoint,
-                        uint32_t usageOffset)
+                        uint32_t usageOffset, bool indirect = false)
 {
     const auto bound = state.boundPipelines.find(bindPoint);
     if (bound == state.boundPipelines.end()) return;
@@ -473,14 +473,15 @@ static void recordUsage(ShaderDump::CommandBufferState& state,
     if (usageOffset == 0) ++usage.draws;
     else if (usageOffset == 1) ++usage.dispatches;
     else ++usage.traceRays;
+    if (indirect) ++usage.indirectDrawCommands;
 }
 
-void ShaderDump::recordDraw(VkCommandBuffer commandBuffer)
+void ShaderDump::recordDraw(VkCommandBuffer commandBuffer, bool indirect)
 {
     if (!active) return;
     std::lock_guard<std::mutex> guard(lock);
     recordUsage(commandBuffers[reinterpret_cast<uintptr_t>(commandBuffer)], pipelines, frameUsage,
-                VK_PIPELINE_BIND_POINT_GRAPHICS, 0);
+                VK_PIPELINE_BIND_POINT_GRAPHICS, 0, indirect);
 }
 
 void ShaderDump::recordDispatch(VkCommandBuffer commandBuffer)
@@ -553,7 +554,7 @@ void ShaderDump::endFrame()
     const std::filesystem::path table = std::filesystem::path(outputPath) / "tables" / "frame_pipeline_usage.csv";
     const bool newTable = !std::filesystem::exists(table);
     std::ofstream csvFile(table, std::ios::app);
-    if (newTable) csvFile << "frame,pipeline_signature,label_path,draw_count,dispatch_count,trace_rays_count\n";
+    if (newTable) csvFile << "frame,pipeline_signature,label_path,draw_count,dispatch_count,trace_rays_count,indirect_draw_command_count\n";
     for (const auto& [key, usage] : frameUsage)
     {
         const size_t separator = key.find('\x1f');
@@ -563,10 +564,10 @@ void ShaderDump::endFrame()
         {
             report["usage"].push_back({{"pipeline_signature", signature}, {"label_path", label},
                                         {"draw_count", usage.draws}, {"dispatch_count", usage.dispatches},
-                                        {"trace_rays_count", usage.traceRays}});
+                                        {"trace_rays_count", usage.traceRays}, {"indirect_draw_command_count", usage.indirectDrawCommands}});
         }
         csvFile << frameNumber << ',' << csv(signature) << ',' << csv(label) << ',' << usage.draws << ','
-                << usage.dispatches << ',' << usage.traceRays << '\n';
+                << usage.dispatches << ',' << usage.traceRays << ',' << usage.indirectDrawCommands << '\n';
     }
     if (detailed)
     {

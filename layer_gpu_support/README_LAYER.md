@@ -215,6 +215,12 @@ Escape closes detail panels.
 
 The Help tab explains data scope, capture-relative flags, sorting, and fields.
 Pipeline rows group identical shader combinations, not complete pipeline state.
+Draw counts are CPU API call counts, including indirect, indirect-count, EXT mesh,
+and EXT multi-draw commands supported by the framework. Each call counts once,
+regardless of drawCount/maxDrawCount. `indirect_draw_command_count` is a subset of
+draw_count; GPU-executed draw counts are unavailable without GPU buffer readback.
+NV mesh and AMD-specific entrypoints not exposed by the common framework, and
+device-generated-command pipeline attribution, are outside this coverage.
 Details retain each captured pipeline instance and give every executable its own
 column identified by instance ID and executable index. Summary metrics are maxima
 across instances; usage and pass labels remain at shader-combination group level.

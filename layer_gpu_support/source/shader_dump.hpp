@@ -65,7 +65,7 @@ public:
     void bindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, VkPipeline pipeline);
     void beginLabel(VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT& label);
     void endLabel(VkCommandBuffer commandBuffer);
-    void recordDraw(VkCommandBuffer commandBuffer);
+    void recordDraw(VkCommandBuffer commandBuffer, bool indirect = false);
     void recordDispatch(VkCommandBuffer commandBuffer);
     void recordTraceRays(VkCommandBuffer commandBuffer);
     void recordObjectName(const VkDebugUtilsObjectNameInfoEXT& nameInfo);
@@ -99,6 +99,7 @@ public:
         uint64_t draws {0};
         uint64_t dispatches {0};
         uint64_t traceRays {0};
+        uint64_t indirectDrawCommands {0};
     };
 
 private:
